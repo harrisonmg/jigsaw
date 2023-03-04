@@ -1,0 +1,60 @@
+# architecture
+- server
+    - tokio, warp
+    - HTTPS REST API
+        - auth server admin
+        - load new image, cut and start puzzle
+        - list and kick clients
+            - maybe mutate
+    - communicate with clients via websockets
+        - new connection
+            - client sends name and cursor color
+            - server sends game state
+        - accept actions
+            - pickup
+            - move
+            - place
+            - cursor location
+        - deny actions due to conflict
+            - reply with correct piece location and status
+        - broadcast updates to other clients
+        - automatically put down piece or group on disconnect
+    - game logic that occurs server side
+        - piece connections checked by server on piece place
+
+- client
+    - bevy, tungstenite, wasm
+    - connect to server
+    - download state
+    - given a state, render the game
+    - accept player input
+    - rollback-like state
+        - render based on state + player input
+        - apply updates from server regardless of player input
+
+- game
+    - serde, rmp_serde
+    - message types
+    - serializable data structures
+        - game state
+            - game constants
+                - piece size
+                - puzzle size
+            - pieces
+                - pose
+                - image indices
+                - sprite
+            - groups
+            - players
+                - uuid
+                - name
+                - cursor
+                    - color
+                    - position
+    - connection and grouping logic
+
+- puzzle cutter
+    - take an image and a piece count
+    - cut that baby up into pieces
+    - return a bunch of images and their image indices
+        - ideally in game state data structure form
