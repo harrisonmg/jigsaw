@@ -4,8 +4,8 @@
     - HTTPS REST API
         - auth server admin
         - load new image, cut and start puzzle
+        - load a game state
         - list and kick clients
-            - maybe mutate
     - communicate with clients via websockets
         - new connection
             - client sends name and cursor color
@@ -27,6 +27,7 @@
     - connect to server
     - download state
     - given a state, render the game
+    - display a little controls help box
     - accept player input
     - rollback-like state
         - render based on state + player input
@@ -58,3 +59,7 @@
     - cut that baby up into pieces
     - return a bunch of images and their image indices
         - ideally in game state data structure form
+
+- admin interface
+    - native app that runs the puzzle cutter and creates a new game state
+    - interfaces with server admin API
