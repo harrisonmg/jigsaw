@@ -1,0 +1,12 @@
+[package]
+name = "cutter"
+version = "0.1.0"
+authors = ["harrisonmg"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.69"
+image = "0.24.5"
+resvg = "0.29.0"
+tiny-skia = "0.8.3"
+usvg = "0.29.0"

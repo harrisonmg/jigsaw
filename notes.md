@@ -6,6 +6,7 @@
         - load new image, cut and start puzzle
         - load a game state
         - list and kick clients
+    - serves wasm client
     - communicate with clients via websockets
         - new connection
             - client sends name and cursor color
@@ -27,6 +28,8 @@
     - connect to server
     - download state
     - given a state, render the game
+    - resiable reference image panel
+    - shader for piece outline
     - display a little controls help box
     - accept player input
     - rollback-like state
@@ -41,6 +44,7 @@
             - game constants
                 - piece size
                 - puzzle size
+                - full image
             - pieces
                 - pose
                 - image indices
@@ -54,7 +58,7 @@
                     - position
     - connection and grouping logic
 
-- puzzle cutter
+- cutter
     - take an image and a piece count
     - cut that baby up into pieces
     - return a bunch of images and their image indices
