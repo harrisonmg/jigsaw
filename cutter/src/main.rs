@@ -1,4 +1,5 @@
 use image::Pixel;
+use usvg::NodeExt;
 
 fn main() -> anyhow::Result<()> {
     let file = std::fs::File::open("ymo.jpg")?;
@@ -10,16 +11,25 @@ fn main() -> anyhow::Result<()> {
 
     let w = img.width();
     let h = img.height();
-    let mut crop = image::imageops::crop(&mut img, w / 3, h / 3, w / 2, h / 3).to_image();
+    let pw = w / 10;
+    let ph = h / 2;
+    let mut crop = image::imageops::crop(&mut img, w / 3, h / 3, pw, ph).to_image();
 
     let svg = std::fs::read("middle_piece.svg").unwrap();
     let mut options = usvg::Options::default();
     options.shape_rendering = usvg::ShapeRendering::CrispEdges;
+
     let tree = usvg::Tree::from_data(&svg, &options)?;
-    let mut pixmap = tiny_skia::Pixmap::new(w / 2, h / 3).unwrap();
+    let sx = f64::from(pw) / tree.size.width();
+    let sy = f64::from(ph) / tree.size.height();
+    if let usvg::NodeKind::Group(root_group) = &mut *tree.root.borrow_mut() {
+        root_group.transform.scale(sx, sy);
+    }
+
+    let mut pixmap = tiny_skia::Pixmap::new(pw, ph).unwrap();
     resvg::render(
         &tree,
-        usvg::FitTo::Size(pixmap.width(), pixmap.height()),
+        usvg::FitTo::Original,
         tiny_skia::Transform::default(),
         pixmap.as_mut(),
     );
