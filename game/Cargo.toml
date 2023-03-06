@@ -1,0 +1,5 @@
+[package]
+name = "game"
+version = "0.1.0"
+authors = ["harrisonmg"]
+edition = "2021"

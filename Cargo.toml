@@ -4,6 +4,6 @@ members = [
   #"admin",
   #"client",
   "cutter",
-  #"game",
+  "game",
   #"server",
 ]

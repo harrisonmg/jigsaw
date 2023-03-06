@@ -46,6 +46,7 @@
                 - puzzle size
                 - full image
             - pieces
+                - piece type
                 - pose
                 - image indices
                 - sprite
