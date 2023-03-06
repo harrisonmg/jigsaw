@@ -3,3 +3,8 @@ name = "game"
 version = "0.1.0"
 authors = ["harrisonmg"]
 edition = "2021"
+
+[dependencies]
+anyhow = "1.0.69"
+image = "0.24.5"
+serde = { version = "1.0", features = ["derive"] }
