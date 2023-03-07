@@ -3,7 +3,6 @@
 members = [
   #"admin",
   #"client",
-  "cutter",
   "game",
   #"server",
 ]
