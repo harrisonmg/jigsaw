@@ -6,13 +6,17 @@ use std::collections::{
 use serde::{Deserialize, Serialize};
 
 use crate::piece::*;
-use crate::puzzle_params::PuzzleParams;
 
 #[derive(Serialize, Deserialize)]
 pub struct Puzzle {
-    params: PuzzleParams,
     image: Vec<u8>, // raw image::RgbaImage
+    image_width: u32,
+    image_height: u32,
+    puzzle_width: u8,
+    puzzle_height: u8,
     piece_map: HashMap<PieceIndex, Piece>,
+    piece_width: u32,
+    piece_height: u32,
 }
 
 impl Puzzle {
@@ -28,12 +32,8 @@ impl Puzzle {
         let piece_width = image.width() / u32::from(puzzle_width);
         let piece_height = image.height() / u32::from(puzzle_height);
 
-        let params = PuzzleParams {
-            puzzle_width,
-            puzzle_height,
-            piece_width,
-            piece_height,
-        };
+        let image_width = image.width();
+        let image_height = image.height();
 
         // crop pixels from right and bottom of image to make size multiple of piece size
         let mut image: image::RgbaImage = image::imageops::crop(
@@ -49,32 +49,40 @@ impl Puzzle {
         for row in 0..puzzle_height {
             for col in 0..puzzle_width {
                 let index = PieceIndex(row, col);
-                let piece = Piece::new(index, &mut image, &params);
+                let piece = Piece::new(
+                    index,
+                    piece_width,
+                    piece_height,
+                    &mut image,
+                    puzzle_width,
+                    puzzle_height,
+                );
                 piece_map.insert(index, piece);
             }
         }
 
         Self {
-            params,
             image: image.into_raw(),
+            image_width,
+            image_height,
+            puzzle_width,
+            puzzle_height,
             piece_map,
+            piece_width,
+            piece_height,
         }
     }
 
+    pub fn image(self) -> image::RgbaImage {
+        image::RgbaImage::from_raw(self.image_width, self.image_height, self.image).unwrap()
+    }
+
     pub fn puzzle_width(&self) -> u8 {
-        self.params.puzzle_width
+        self.puzzle_width
     }
 
     pub fn puzzle_height(&self) -> u8 {
-        self.params.puzzle_height
-    }
-
-    pub fn piece_width(&self) -> u32 {
-        self.params.piece_width
-    }
-
-    pub fn piece_height(&self) -> u32 {
-        self.params.piece_height
+        self.puzzle_height
     }
 
     pub fn piece(&self, index: PieceIndex) -> Option<&Piece> {
@@ -91,5 +99,13 @@ impl Puzzle {
 
     pub fn pieces_mut<'a>(&'a mut self) -> ValuesMut<'a, PieceIndex, Piece> {
         self.piece_map.values_mut()
+    }
+
+    pub fn piece_width(&self) -> u32 {
+        self.piece_width
+    }
+
+    pub fn piece_height(&self) -> u32 {
+        self.piece_height
     }
 }

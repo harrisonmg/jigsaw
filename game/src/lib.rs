@@ -1,5 +1,3 @@
-mod puzzle_params;
-
 mod piece;
 pub use piece::*;
 

@@ -1,11 +1,15 @@
 use serde::{Deserialize, Serialize};
 
-use crate::puzzle_params::PuzzleParams;
+use crate::puzzle;
+
+const TAB_LENGTH_RATIO: f64 = 0.34;
+const TAB_OUTER_SIZE_RATIO: f64 = 0.38;
+const TAB_INNER_SIZE_RATIO: f64 = 0.24;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct PieceIndex(pub u8, pub u8);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum PieceKind {
     TopLeftCorner,
 
@@ -35,7 +39,7 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    pub fn new(index: PieceIndex, params: &PuzzleParams) -> Self {
+    pub fn new(index: PieceIndex, puzzle_width: u8, puzzle_height: u8) -> Self {
         use PieceKind::*;
         let PieceIndex(row, col) = index;
         let even = (row + col) % 2 == 0;
@@ -43,7 +47,7 @@ impl PieceKind {
         if row == 0 {
             if col == 0 {
                 TopLeftCorner
-            } else if col == params.puzzle_width - 1 {
+            } else if col == puzzle_width - 1 {
                 if even {
                     TopRightCornerEven
                 } else {
@@ -56,14 +60,14 @@ impl PieceKind {
                     TopEdgeOdd
                 }
             }
-        } else if row == params.puzzle_height - 1 {
+        } else if row == puzzle_height - 1 {
             if col == 0 {
                 if even {
                     BottomLeftCornerEven
                 } else {
                     BottomLeftCornerOdd
                 }
-            } else if col == params.puzzle_width - 1 {
+            } else if col == puzzle_width - 1 {
                 if even {
                     BottomRightCornerEven
                 } else {
@@ -83,7 +87,7 @@ impl PieceKind {
                 } else {
                     LeftEdgeOdd
                 }
-            } else if col == params.puzzle_width - 1 {
+            } else if col == puzzle_width - 1 {
                 if even {
                     RightEdgeEven
                 } else {
@@ -98,6 +102,72 @@ impl PieceKind {
             }
         }
     }
+
+    fn tabs(&self) -> (u32, u32, u32, u32) {
+        use PieceKind::*;
+
+        // north south east west
+        match self {
+            TopLeftCorner => (0, 0, 1, 0),
+
+            TopRightCornerEven => (0, 0, 0, 1),
+            TopRightCornerOdd => (0, 1, 0, 0),
+
+            TopEdgeEven => (0, 0, 1, 1),
+            TopEdgeOdd => (0, 1, 0, 0),
+
+            BottomLeftCornerEven => (0, 0, 1, 0),
+            BottomLeftCornerOdd => (1, 0, 0, 0),
+
+            BottomEdgeEven => (0, 0, 1, 1),
+            BottomEdgeOdd => (1, 0, 0, 0),
+
+            BottomRightCornerEven => (0, 0, 0, 1),
+            BottomRightCornerOdd => (1, 0, 0, 0),
+
+            LeftEdgeEven => (0, 0, 1, 0),
+            LeftEdgeOdd => (1, 1, 0, 0),
+
+            RightEdgeEven => (0, 0, 0, 1),
+            RightEdgeOdd => (1, 1, 0, 0),
+
+            MiddleEven => (0, 0, 1, 1),
+            MiddleOdd => (1, 1, 0, 0),
+        }
+    }
+
+    fn blanks(&self) -> (u32, u32, u32, u32) {
+        use PieceKind::*;
+
+        // north south east west
+        match self {
+            TopLeftCorner => (0, 1, 0, 0),
+
+            TopRightCornerEven => (0, 1, 0, 0),
+            TopRightCornerOdd => (0, 0, 0, 1),
+
+            TopEdgeEven => (0, 1, 0, 0),
+            TopEdgeOdd => (0, 0, 1, 1),
+
+            BottomLeftCornerEven => (1, 0, 0, 0),
+            BottomLeftCornerOdd => (0, 0, 1, 0),
+
+            BottomEdgeEven => (1, 0, 0, 0),
+            BottomEdgeOdd => (0, 0, 1, 1),
+
+            BottomRightCornerEven => (1, 0, 0, 0),
+            BottomRightCornerOdd => (0, 0, 0, 1),
+
+            LeftEdgeEven => (1, 1, 0, 0),
+            LeftEdgeOdd => (0, 0, 1, 0),
+
+            RightEdgeEven => (1, 1, 0, 0),
+            RightEdgeOdd => (0, 0, 0, 1),
+
+            MiddleEven => (1, 1, 0, 0),
+            MiddleOdd => (0, 0, 1, 1),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -110,23 +180,68 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn new(index: PieceIndex, image: &mut image::RgbaImage, params: &PuzzleParams) -> Self {
-        let kind = PieceKind::new(index, params);
+    pub fn new(
+        index: PieceIndex,
+        piece_width: u32,
+        piece_height: u32,
+        image: &mut image::RgbaImage,
+        puzzle_width: u8,
+        puzzle_height: u8,
+    ) -> Self {
+        let kind = PieceKind::new(index, puzzle_width, puzzle_height);
 
-        // TODO cut sprite, calculate pixel perfect lobes
+        // TODO cut sprite, calculate pixel perfect tabs
         // probably have to create the SVG by hand
-        let lobe_width = (LOBE_TO_PIECE_RATIO * f64::from(params.piece_width)) as u32;
-        let lobe_height = (LOBE_TO_PIECE_RATIO * f64::from(params.piece_height)) as u32;
 
-        let sprite = image::RgbaImage::new(params.piece_width, params.piece_height);
+        let sprite = Piece::cut_sprite(index, piece_width, piece_height, image, kind);
+
+        let sprite_width = sprite.width();
+        let sprite_height = sprite.height();
 
         Piece {
             index,
             kind,
-            sprite_buf: sprite.into_raw()
-            sprite_width: sprite.width(),
-            sprite_height: sprite.height(),
+            sprite_buf: sprite.into_raw(),
+            sprite_width,
+            sprite_height,
         }
+    }
+
+    fn tab_size(piece_width: u32, piece_height: u32) -> (u32, u32) {
+        (
+            (TAB_LENGTH_RATIO * f64::from(piece_width)) as u32,
+            (TAB_LENGTH_RATIO * f64::from(piece_height)) as u32,
+        )
+    }
+
+    pub fn sprite_origin(&self, piece_width: u32, piece_height: u32) -> (u32, u32) {
+        let (north_tab, _, _, west_tab) = self.kind.tabs();
+        let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
+        (tab_width * west_tab, tab_height * north_tab)
+    }
+
+    fn cut_sprite(
+        index: PieceIndex,
+        piece_width: u32,
+        piece_height: u32,
+        image: &mut image::RgbaImage,
+        kind: PieceKind,
+    ) -> image::RgbaImage {
+        let PieceIndex(row, col) = index;
+        let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
+        let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
+        let (north_blank, south_blank, east_blank, west_blank) = kind.blanks();
+
+        let crop = image::imageops::crop(
+            image,
+            col as u32 * piece_width - tab_width * west_tab,
+            row as u32 * piece_height - tab_height * north_tab,
+            piece_width + tab_width * (east_tab + west_tab),
+            piece_height + tab_height * (north_tab + south_tab),
+        )
+        .to_image();
+
+        let mask = usvg::Tree::
     }
 
     pub fn index(&self) -> PieceIndex {
@@ -137,9 +252,7 @@ impl Piece {
         self.kind
     }
 
-    pub fn sprite(&self) -> image::RgbaImage {
+    pub fn sprite(self) -> image::RgbaImage {
         image::RgbaImage::from_raw(self.sprite_width, self.sprite_height, self.sprite_buf).unwrap()
     }
 }
-
-const LOBE_TO_PIECE_RATIO: f64 = 1.0 / 3.0;
