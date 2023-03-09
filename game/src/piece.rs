@@ -1,6 +1,5 @@
+use image::Pixel;
 use serde::{Deserialize, Serialize};
-
-use crate::puzzle;
 
 const TAB_LENGTH_RATIO: f64 = 0.34;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.38;
@@ -232,16 +231,25 @@ impl Piece {
         let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
         let (north_blank, south_blank, east_blank, west_blank) = kind.blanks();
 
-        let crop = image::imageops::crop(
+        let sprite_width = piece_width + tab_width * (east_tab + west_tab);
+        let sprite_height = piece_height + tab_height * (north_tab + south_tab);
+
+        let mut crop = image::imageops::crop(
             image,
             col as u32 * piece_width - tab_width * west_tab,
             row as u32 * piece_height - tab_height * north_tab,
-            piece_width + tab_width * (east_tab + west_tab),
-            piece_height + tab_height * (north_tab + south_tab),
+            sprite_width,
+            sprite_height,
         )
         .to_image();
 
-        let mask = usvg::Tree::
+        let mask = resvg::tiny_skia::Pixmap::new(sprite_width, sprite_height).unwrap();
+
+        for (x, y, pixel) in crop.enumerate_pixels_mut() {
+            pixel.channels_mut()[3] = mask.pixel(x, y).unwrap().alpha();
+        }
+
+        crop
     }
 
     pub fn index(&self) -> PieceIndex {
