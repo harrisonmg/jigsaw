@@ -1,5 +1,9 @@
+use std::rc::Rc;
+
 use image::Pixel;
+use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
+use usvg::NodeExt;
 
 const TAB_LENGTH_RATIO: f64 = 0.34;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.38;
@@ -102,7 +106,8 @@ impl PieceKind {
         }
     }
 
-    fn tabs(&self) -> (u32, u32, u32, u32) {
+    // TODO non pub
+    pub fn tabs(&self) -> (u32, u32, u32, u32) {
         use PieceKind::*;
 
         // north south east west
@@ -135,7 +140,8 @@ impl PieceKind {
         }
     }
 
-    fn blanks(&self) -> (u32, u32, u32, u32) {
+    // TODO non pub
+    pub fn blanks(&self) -> (u32, u32, u32, u32) {
         use PieceKind::*;
 
         // north south east west
@@ -243,12 +249,150 @@ impl Piece {
         )
         .to_image();
 
-        let mask = resvg::tiny_skia::Pixmap::new(sprite_width, sprite_height).unwrap();
+        let tree_size = usvg::Size::new(sprite_width.into(), sprite_height.into()).unwrap();
+        let tree = usvg::Tree {
+            size: tree_size,
+            view_box: usvg::ViewBox {
+                rect: tree_size.to_rect(0.0, 0.0),
+                aspect: usvg::AspectRatio::default(),
+            },
+            root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
+        };
+
+        let mut path_data = usvg::PathData::new();
+        let mut cursor_x: f64 = (west_tab * tab_width).into();
+        let mut cursor_y: f64 = (north_tab * tab_height).into();
+
+        // start in northwest corner
+        path_data.push_move_to(cursor_x, cursor_y);
+
+        let mut rel_line = |dx: f64, dy: f64| {
+            cursor_x += dx;
+            cursor_y += dy;
+            path_data.push_line_to(cursor_x, cursor_y);
+        };
+
+        let piece_width: f64 = piece_width.into();
+        let piece_height: f64 = piece_height.into();
+
+        let tab_width: f64 = tab_width.into();
+        let tab_height: f64 = tab_width.into();
+
+        let mut ns_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_width).round();
+        if ns_tab_inner_size / 2.0 != 0.0 {
+            ns_tab_inner_size -= 1.0;
+        }
+
+        let mut ns_tab_outer_size: f64 = (TAB_OUTER_SIZE_RATIO * piece_width).round();
+        if ns_tab_outer_size / 2.0 != 0.0 {
+            ns_tab_outer_size -= 1.0;
+        }
+
+        let ns_corner_seg_size = (f64::from(piece_width) - ns_tab_inner_size) / 2.0;
+        let ns_bulge_half_size = (ns_tab_outer_size - ns_tab_inner_size) / 2.0;
+
+        let mut ew_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_height).round();
+        if ew_tab_inner_size / 2.0 != 0.0 {
+            ew_tab_inner_size -= 1.0;
+        }
+
+        let mut ew_tab_outer_size: f64 = (TAB_OUTER_SIZE_RATIO * piece_height).round();
+        if ew_tab_outer_size / 2.0 != 0.0 {
+            ew_tab_outer_size -= 1.0;
+        }
+
+        let ew_corner_seg_size = (f64::from(piece_height) - ew_tab_inner_size) / 2.0;
+        let ew_bulge_half_size = (ew_tab_outer_size - ew_tab_inner_size) / 2.0;
+
+        // northern eastward path
+        rel_line(ns_corner_seg_size, 0.0);
+
+        if north_tab > 0 {
+            rel_line(-ns_bulge_half_size, -tab_height);
+            rel_line(ns_tab_outer_size, 0.0);
+            rel_line(-ns_bulge_half_size, tab_height);
+        } else if north_blank > 0 {
+            rel_line(-ns_bulge_half_size, tab_height);
+            rel_line(ns_tab_outer_size, 0.0);
+            rel_line(-ns_bulge_half_size, -tab_height);
+        } else {
+            rel_line(ns_tab_inner_size, 0.0);
+        }
+
+        rel_line(ns_corner_seg_size, 0.0);
+
+        // eastern southward path
+        rel_line(0.0, ew_corner_seg_size);
+
+        if east_tab > 0 {
+            rel_line(tab_width, -ew_bulge_half_size);
+            rel_line(0.0, ew_tab_outer_size);
+            rel_line(-tab_width, -ew_bulge_half_size);
+        } else if east_blank > 0 {
+            rel_line(-tab_width, -ew_bulge_half_size);
+            rel_line(0.0, ew_tab_outer_size);
+            rel_line(tab_width, -ew_bulge_half_size);
+        } else {
+            rel_line(0.0, ew_tab_inner_size);
+        }
+
+        rel_line(0.0, ew_corner_seg_size);
+
+        // southern westward path
+        rel_line(-ns_corner_seg_size, 0.0);
+
+        if south_tab > 0 {
+            rel_line(ns_bulge_half_size, tab_height);
+            rel_line(-ns_tab_outer_size, 0.0);
+            rel_line(ns_bulge_half_size, -tab_height);
+        } else if south_blank > 0 {
+            rel_line(ns_bulge_half_size, -tab_height);
+            rel_line(-ns_tab_outer_size, 0.0);
+            rel_line(ns_bulge_half_size, tab_height);
+        } else {
+            rel_line(-ns_tab_inner_size, 0.0);
+        }
+
+        rel_line(-ns_corner_seg_size, 0.0);
+
+        // western northward path
+        rel_line(0.0, -ew_corner_seg_size);
+
+        if west_tab > 0 {
+            rel_line(-tab_width, ew_bulge_half_size);
+            rel_line(0.0, -ew_tab_outer_size);
+            rel_line(tab_width, ew_bulge_half_size);
+        } else if west_blank > 0 {
+            rel_line(tab_width, ew_bulge_half_size);
+            rel_line(0.0, -ew_tab_outer_size);
+            rel_line(-tab_width, ew_bulge_half_size);
+        } else {
+            rel_line(0.0, -ew_tab_inner_size);
+        }
+
+        rel_line(0.0, -ew_corner_seg_size);
+
+        tree.root.append_kind(usvg::NodeKind::Path(usvg::Path {
+            fill: Some(usvg::Fill::default()), // black
+            data: Rc::new(path_data),
+            rendering_mode: usvg::ShapeRendering::CrispEdges,
+            ..usvg::Path::default()
+        }));
+
+        let mut mask = resvg::tiny_skia::Pixmap::new(sprite_width, sprite_height).unwrap();
+        resvg::render(
+            &tree,
+            usvg::FitTo::Original,
+            tiny_skia::Transform::default(),
+            mask.as_mut(),
+        );
 
         for (x, y, pixel) in crop.enumerate_pixels_mut() {
             pixel.channels_mut()[3] = mask.pixel(x, y).unwrap().alpha();
         }
 
+        crop.save(format!("{:?}.png", uuid::Uuid::new_v4()))
+            .unwrap();
         crop
     }
 

@@ -29,8 +29,16 @@ impl Puzzle {
         let puzzle_height = puzzle_height.round().max(2.0) as u8;
         let puzzle_width = puzzle_width.round().max(2.0) as u8;
 
-        let piece_width = image.width() / u32::from(puzzle_width);
-        let piece_height = image.height() / u32::from(puzzle_height);
+        // make sure piece sizes are even so tabs are centered.
+        let mut piece_width = image.width() / u32::from(puzzle_width);
+        if piece_width % 2 == 1 {
+            piece_width -= 1;
+        }
+
+        let mut piece_height = image.height() / u32::from(puzzle_height);
+        if piece_height % 2 == 1 {
+            piece_height -= 1;
+        }
 
         let image_width = image.width();
         let image_height = image.height();
