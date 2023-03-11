@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use image::Pixel;
 use resvg::{tiny_skia, usvg};
@@ -11,6 +11,31 @@ const TAB_INNER_SIZE_RATIO: f64 = 0.24;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct PieceIndex(pub u8, pub u8);
+
+impl PieceIndex {
+    pub fn neighbors(self, puzzle_width: u8, puzzle_height: u8) -> Vec<Self> {
+        let PieceIndex(row, col) = self;
+        let mut neighbors = Vec::new();
+
+        if row > 0 {
+            neighbors.push(PieceIndex(row - 1, col))
+        }
+
+        if row < puzzle_height - 1 {
+            neighbors.push(PieceIndex(row + 1, col))
+        }
+
+        if col > 0 {
+            neighbors.push(PieceIndex(row, col - 1))
+        }
+
+        if col < puzzle_width - 1 {
+            neighbors.push(PieceIndex(row, col + 1))
+        }
+
+        neighbors
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum PieceKind {
@@ -107,7 +132,7 @@ impl PieceKind {
         }
     }
 
-    pub fn tabs(&self) -> (u32, u32, u32, u32) {
+    pub(crate) fn tabs(&self) -> (u32, u32, u32, u32) {
         use PieceKind::*;
 
         // north south east west
@@ -140,7 +165,7 @@ impl PieceKind {
         }
     }
 
-    pub fn blanks(&self) -> (u32, u32, u32, u32) {
+    pub(crate) fn blanks(&self) -> (u32, u32, u32, u32) {
         use PieceKind::*;
 
         // north south east west
@@ -181,6 +206,8 @@ pub struct Piece {
     sprite_buf: Vec<u8>, // raw image::RgbaImage
     sprite_width: u32,
     sprite_height: u32,
+    transform: bevy::transform::components::Transform,
+    group: Rc<RefCell<Vec<Piece>>>,
 }
 
 impl Piece {
@@ -205,6 +232,8 @@ impl Piece {
             sprite_buf: sprite.into_raw(),
             sprite_width,
             sprite_height,
+            transform: bevy::transform::components::Transform::IDENTITY,
+            group: Rc::new(RefCell::new(Vec::new())),
         }
     }
 

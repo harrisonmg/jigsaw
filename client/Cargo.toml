@@ -3,3 +3,45 @@ name = "client"
 version = "0.1.0"
 authors = ["harrisonmg"]
 edition = "2021"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[dependencies]
+game = { path = "../game" }
+
+anyhow = "1.0.69"
+
+[dependencies.bevy]
+version = "0.10.0"
+features = [
+  #"android_shared_stdcxx",
+  "animation",
+  #"bevy_animation",
+  "bevy_asset",
+  #"bevy_audio",
+  "bevy_core_pipeline",
+  #"bevy_gilrs",
+  #"bevy_gltf",
+  #"bevy_pbr",
+  "bevy_render",
+  #"bevy_scene",
+  "bevy_sprite",
+  "bevy_text",
+  "bevy_ui",
+  "bevy_winit",
+
+  "dynamic_linking",
+
+  "filesystem_watcher",
+  "hdr",
+  "ktx2",
+  "png",
+  "tonemapping_luts",
+  "vorbis",
+  "x11",
+  "zstd"
+]
