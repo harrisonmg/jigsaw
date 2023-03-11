@@ -8,13 +8,23 @@ use game::*;
 use usvg::NodeExt;
 
 fn main() -> Result<()> {
-    puzzle_test()
-}
-
-fn puzzle_test() -> Result<()> {
+    puzzle_test()?;
     Ok(())
 }
 
+#[allow(dead_code)]
+fn puzzle_test() -> Result<()> {
+    let file = std::fs::File::open("nihon.jpg")?;
+    let reader = std::io::BufReader::new(file);
+    let mut image = image::io::Reader::new(reader)
+        .with_guessed_format()?
+        .decode()?
+        .to_rgba8();
+    let _puzzle = Puzzle::new(&mut image, 1000);
+    Ok(())
+}
+
+#[allow(dead_code)]
 fn cut_sprite_test() -> Result<()> {
     let file = std::fs::File::open("ymo.jpg")?;
     let reader = std::io::BufReader::new(file);

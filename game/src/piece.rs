@@ -47,6 +47,7 @@ impl PieceKind {
         let PieceIndex(row, col) = index;
         let even = (row + col) % 2 == 0;
 
+        #[allow(clippy::collapsible_else_if)]
         if row == 0 {
             if col == 0 {
                 TopLeftCorner
@@ -106,7 +107,6 @@ impl PieceKind {
         }
     }
 
-    // TODO non pub
     pub fn tabs(&self) -> (u32, u32, u32, u32) {
         use PieceKind::*;
 
@@ -140,7 +140,6 @@ impl PieceKind {
         }
     }
 
-    // TODO non pub
     pub fn blanks(&self) -> (u32, u32, u32, u32) {
         use PieceKind::*;
 
@@ -194,9 +193,6 @@ impl Piece {
         puzzle_height: u8,
     ) -> Self {
         let kind = PieceKind::new(index, puzzle_width, puzzle_height);
-
-        // TODO cut sprite, calculate pixel perfect tabs
-        // probably have to create the SVG by hand
 
         let sprite = Piece::cut_sprite(index, piece_width, piece_height, image, kind);
 
@@ -276,7 +272,7 @@ impl Piece {
         let piece_height: f64 = piece_height.into();
 
         let tab_width: f64 = tab_width.into();
-        let tab_height: f64 = tab_width.into();
+        let tab_height: f64 = tab_height.into();
 
         let mut ns_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_width).round();
         if ns_tab_inner_size / 2.0 != 0.0 {
@@ -288,7 +284,7 @@ impl Piece {
             ns_tab_outer_size -= 1.0;
         }
 
-        let ns_corner_seg_size = (f64::from(piece_width) - ns_tab_inner_size) / 2.0;
+        let ns_corner_seg_size = (piece_width - ns_tab_inner_size) / 2.0;
         let ns_bulge_half_size = (ns_tab_outer_size - ns_tab_inner_size) / 2.0;
 
         let mut ew_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_height).round();
@@ -301,7 +297,7 @@ impl Piece {
             ew_tab_outer_size -= 1.0;
         }
 
-        let ew_corner_seg_size = (f64::from(piece_height) - ew_tab_inner_size) / 2.0;
+        let ew_corner_seg_size = (piece_height - ew_tab_inner_size) / 2.0;
         let ew_bulge_half_size = (ew_tab_outer_size - ew_tab_inner_size) / 2.0;
 
         // northern eastward path
@@ -391,8 +387,6 @@ impl Piece {
             pixel.channels_mut()[3] = mask.pixel(x, y).unwrap().alpha();
         }
 
-        crop.save(format!("{:?}.png", uuid::Uuid::new_v4()))
-            .unwrap();
         crop
     }
 

@@ -101,11 +101,11 @@ impl Puzzle {
         self.piece_map.get_mut(&index)
     }
 
-    pub fn pieces<'a>(&'a self) -> Values<'a, PieceIndex, Piece> {
+    pub fn pieces(&self) -> Values<PieceIndex, Piece> {
         self.piece_map.values()
     }
 
-    pub fn pieces_mut<'a>(&'a mut self) -> ValuesMut<'a, PieceIndex, Piece> {
+    pub fn pieces_mut(&mut self) -> ValuesMut<PieceIndex, Piece> {
         self.piece_map.values_mut()
     }
 
