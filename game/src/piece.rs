@@ -1,5 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
+use bevy::transform::components::Transform;
 use image::Pixel;
 use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,7 @@ const TAB_LENGTH_RATIO: f64 = 0.34;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.38;
 const TAB_INNER_SIZE_RATIO: f64 = 0.24;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct PieceIndex(pub u8, pub u8);
 
 impl PieceIndex {
@@ -204,8 +205,7 @@ pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
     sprite: crate::image::Image,
-    transform: bevy::transform::components::Transform,
-    group: Rc<RefCell<Vec<Piece>>>,
+    pub(crate) transform: Transform,
 }
 
 impl Piece {
@@ -225,8 +225,7 @@ impl Piece {
             index,
             kind,
             sprite: sprite.into(),
-            transform: bevy::transform::components::Transform::IDENTITY,
-            group: Rc::new(RefCell::new(Vec::new())),
+            transform: Transform::IDENTITY,
         }
     }
 
@@ -420,7 +419,11 @@ impl Piece {
         self.kind
     }
 
-    pub fn sprite(&self) -> crate::image::Image {
+    pub fn sprite_clone(&self) -> crate::image::Image {
         self.sprite.clone()
+    }
+
+    pub fn transform(&self) -> Transform {
+        self.transform
     }
 }

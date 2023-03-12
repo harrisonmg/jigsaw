@@ -8,9 +8,9 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::piece::*;
+use crate::{Piece, PieceIndex, PieceMoveEvent};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
     image: crate::image::Image,
     puzzle_width: u8,
@@ -102,8 +102,8 @@ impl Puzzle {
         self.piece_map.get(&index)
     }
 
-    pub fn piece_mut(&mut self, index: PieceIndex) -> Option<&mut Piece> {
-        self.piece_map.get_mut(&index)
+    pub fn piece_mut(&mut self, index: &PieceIndex) -> Option<&mut Piece> {
+        self.piece_map.get_mut(index)
     }
 
     pub fn pieces(&self) -> Values<PieceIndex, Piece> {
@@ -120,5 +120,21 @@ impl Puzzle {
 
     pub fn piece_height(&self) -> u32 {
         self.piece_height
+    }
+
+    pub fn move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMoveEvent> {
+        let piece = self.piece_mut(index).unwrap();
+        let mut translation = &mut piece.transform.translation;
+        translation.x = x;
+        translation.y = y;
+        vec![PieceMoveEvent::from_piece(piece)]
+    }
+
+    pub fn move_piece_rel(&mut self, index: &PieceIndex, dx: f32, dy: f32) -> Vec<PieceMoveEvent> {
+        let piece = self.piece_mut(index).unwrap();
+        let mut translation = &mut piece.transform.translation;
+        translation.x += dx;
+        translation.y += dy;
+        vec![PieceMoveEvent::from_piece(piece)]
     }
 }

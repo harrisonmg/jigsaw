@@ -1,3 +1,8 @@
+# TODO
+* manage z height of pieces when they move.
+* rotation of pieces
+* performance?
+
 # architecture
 - server
     - tokio, warp

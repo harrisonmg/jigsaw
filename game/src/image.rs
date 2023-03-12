@@ -1,10 +1,22 @@
 use serde::{Deserialize, Serialize};
 
+use bevy::render::texture::Image as BevyImageAsset;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Image {
     width: u32,
     height: u32,
-    raw: Vec<u8>, // image::RgbaImage::into_raw()
+    raw: Vec<u8>,
+}
+
+impl Image {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
 }
 
 impl From<image::RgbaImage> for Image {
@@ -17,9 +29,9 @@ impl From<image::RgbaImage> for Image {
     }
 }
 
-impl Into<bevy::render::texture::Image> for Image {
-    fn into(self) -> bevy::render::texture::Image {
-        bevy::render::texture::Image::new(
+impl Into<BevyImageAsset> for Image {
+    fn into(self) -> BevyImageAsset {
+        BevyImageAsset::new(
             bevy::render::render_resource::Extent3d {
                 width: self.width,
                 height: self.height,
