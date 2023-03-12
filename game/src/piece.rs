@@ -203,9 +203,7 @@ impl PieceKind {
 pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
-    sprite_buf: Vec<u8>, // raw image::RgbaImage
-    sprite_width: u32,
-    sprite_height: u32,
+    sprite: crate::image::Image,
     transform: bevy::transform::components::Transform,
     group: Rc<RefCell<Vec<Piece>>>,
 }
@@ -223,15 +221,10 @@ impl Piece {
 
         let sprite = Piece::cut_sprite(index, piece_width, piece_height, image, kind);
 
-        let sprite_width = sprite.width();
-        let sprite_height = sprite.height();
-
         Piece {
             index,
             kind,
-            sprite_buf: sprite.into_raw(),
-            sprite_width,
-            sprite_height,
+            sprite: sprite.into(),
             transform: bevy::transform::components::Transform::IDENTITY,
             group: Rc::new(RefCell::new(Vec::new())),
         }
@@ -427,7 +420,7 @@ impl Piece {
         self.kind
     }
 
-    pub fn sprite(self) -> image::RgbaImage {
-        image::RgbaImage::from_raw(self.sprite_width, self.sprite_height, self.sprite_buf).unwrap()
+    pub fn sprite(&self) -> crate::image::Image {
+        self.sprite.clone()
     }
 }

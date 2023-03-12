@@ -1,6 +1,9 @@
-use std::collections::{
-    hash_map::{Values, ValuesMut},
-    HashMap,
+use std::{
+    collections::{
+        hash_map::{Values, ValuesMut},
+        HashMap,
+    },
+    path::Path,
 };
 
 use serde::{Deserialize, Serialize};
@@ -9,9 +12,7 @@ use crate::piece::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct Puzzle {
-    image: Vec<u8>, // raw image::RgbaImage
-    image_width: u32,
-    image_height: u32,
+    image: crate::image::Image,
     puzzle_width: u8,
     puzzle_height: u8,
     piece_map: HashMap<PieceIndex, Piece>,
@@ -20,7 +21,16 @@ pub struct Puzzle {
 }
 
 impl Puzzle {
-    pub fn new(image: &mut image::RgbaImage, target_piece_count: u16) -> Self {
+    pub fn new(image_path: &Path, target_piece_count: u16) -> Self {
+        let file = std::fs::File::open(image_path).unwrap();
+        let reader = std::io::BufReader::new(file);
+        let mut image = image::io::Reader::new(reader)
+            .with_guessed_format()
+            .unwrap()
+            .decode()
+            .unwrap()
+            .to_rgba8();
+
         // compute puzzle width and height based while trying to make pieces as square as possible
         let image_ratio = f64::from(image.width()) / f64::from(image.height());
         let puzzle_height = (f64::from(target_piece_count) / image_ratio).sqrt();
@@ -40,12 +50,9 @@ impl Puzzle {
             piece_height -= 1;
         }
 
-        let image_width = image.width();
-        let image_height = image.height();
-
         // crop pixels from right and bottom of image to make size multiple of piece size
         let mut image: image::RgbaImage = image::imageops::crop(
-            image,
+            &mut image,
             0,
             0,
             u32::from(puzzle_width) * piece_width,
@@ -70,9 +77,7 @@ impl Puzzle {
         }
 
         Self {
-            image: image.into_raw(),
-            image_width,
-            image_height,
+            image: image.into(),
             puzzle_width,
             puzzle_height,
             piece_map,
@@ -81,8 +86,8 @@ impl Puzzle {
         }
     }
 
-    pub fn image(self) -> image::RgbaImage {
-        image::RgbaImage::from_raw(self.image_width, self.image_height, self.image).unwrap()
+    pub fn image(&self) -> crate::image::Image {
+        self.image.clone()
     }
 
     pub fn puzzle_width(&self) -> u8 {

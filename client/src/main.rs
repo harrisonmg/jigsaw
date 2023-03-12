@@ -1,8 +1,6 @@
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 
-//use game::Puzzle;
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -13,6 +11,14 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle)
+fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
+    commands.spawn(Camera2dBundle::default());
+
+    let puzzle = game::Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
+    let handle = images.add(puzzle.image().into());
+
+    commands.spawn(SpriteBundle {
+        texture: handle,
+        ..default()
+    });
 }

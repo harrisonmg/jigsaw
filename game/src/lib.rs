@@ -1,5 +1,7 @@
-mod piece;
+mod image;
+
+pub mod piece;
 pub use piece::*;
 
-mod puzzle;
+pub mod puzzle;
 pub use puzzle::*;
