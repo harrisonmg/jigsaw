@@ -21,6 +21,7 @@ fn main() {
         .add_system(click_piece)
         .add_system(drag_piece)
         .add_system(move_piece)
+        .add_system(sort_pieces)
         .run();
 }
 
@@ -30,17 +31,21 @@ struct PieceMap {
 }
 
 #[derive(Resource)]
-struct HeldPiece {
-    index: PieceIndex,
-    cursor_position: Vec2,
+struct PieceStack {
+    stack: Vec<Entity>,
+    to_front: Vec<Entity>,
 }
 
 fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
     commands.spawn(Camera2dBundle::default());
 
-    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 1000);
+    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
     let mut piece_map = PieceMap {
         map: HashMap::new(),
+    };
+    let mut piece_stack = PieceStack {
+        stack: Vec::new(),
+        to_front: Vec::new(),
     };
 
     for piece in puzzle.pieces() {
@@ -48,10 +53,18 @@ fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
             .spawn(PieceBundle::from_piece(&piece, &mut image_assets))
             .id();
         piece_map.map.insert(piece.index(), piece_entity);
+        piece_stack.stack.push(piece_entity);
     }
 
-    commands.insert_resource(piece_map);
     commands.insert_resource(puzzle);
+    commands.insert_resource(piece_map);
+    commands.insert_resource(piece_stack);
+}
+
+#[derive(Resource)]
+struct HeldPiece {
+    index: PieceIndex,
+    cursor_position: Vec2,
 }
 
 fn click_piece(
@@ -154,6 +167,7 @@ fn move_piece(
     mut piece_move_events: EventReader<PieceMoveEvent>,
     mut piece_query: Query<&mut Transform, With<PieceComponent>>,
     piece_map: Res<PieceMap>,
+    mut piece_stack: ResMut<PieceStack>,
 ) {
     for event in piece_move_events.iter() {
         let piece_entity = piece_map.map.get(&event.index).unwrap().clone();
@@ -161,5 +175,42 @@ fn move_piece(
         piece_transform.translation.x = event.x;
         piece_transform.translation.y = event.y;
         piece_transform.rotation = Quat::from_rotation_z(event.rotation);
+        piece_stack.to_front.push(piece_entity);
     }
+}
+
+fn sort_pieces(
+    mut piece_query: Query<&mut Transform, With<PieceComponent>>,
+    mut piece_stack: ResMut<PieceStack>,
+) {
+    let piece_iter_mut = piece_query.iter_mut();
+
+    let highest_piece = 900.0;
+    let step = highest_piece / piece_iter_mut.len() as f32 * 2.0;
+
+    for mut transform in piece_iter_mut {
+        transform.translation.z = 0.0;
+    }
+
+    let mut acc: f32 = 0.0;
+    for piece_entity in piece_stack.to_front.iter().rev() {
+        let mut transform = piece_query.get_mut(piece_entity.clone()).unwrap();
+        transform.translation.z = highest_piece - (acc * step);
+        acc += 1.0;
+    }
+
+    let mut new_stack = Vec::new();
+
+    acc = 0.0;
+    for piece_entity in piece_stack.stack.drain(..) {
+        let mut transform = piece_query.get_mut(piece_entity.clone()).unwrap();
+        if transform.translation.z == 0.0 {
+            transform.translation.z = acc * step;
+            acc += 1.0;
+            new_stack.push(piece_entity)
+        }
+    }
+
+    new_stack.extend(piece_stack.to_front.drain(..));
+    piece_stack.stack = new_stack;
 }

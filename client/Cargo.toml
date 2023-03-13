@@ -29,7 +29,7 @@ features = [
   "bevy_ui",
   "bevy_winit",
 
-  #"dynamic_linking",
+  "dynamic_linking",
 
   "filesystem_watcher",
   "hdr",

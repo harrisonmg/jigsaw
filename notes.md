@@ -1,7 +1,7 @@
 # TODO
-* manage z height of pieces when they move.
+* manage z height of pieces when they move
 * rotation of pieces
-* performance?
+* check wasm performance
 
 # architecture
 - server
