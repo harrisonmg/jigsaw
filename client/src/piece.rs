@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
 
 use game::{Piece, PieceIndex};
 
@@ -7,6 +7,7 @@ pub struct PieceComponent {
     index: PieceIndex,
     width: f32,
     height: f32,
+    pub stack_pos: usize,
 }
 
 impl PieceComponent {
@@ -32,13 +33,18 @@ pub struct PieceBundle {
 }
 
 impl PieceBundle {
-    pub fn from_piece(piece: &Piece, image_assets: &mut ResMut<Assets<Image>>) -> Self {
+    pub fn from_piece(
+        piece: &Piece,
+        image_assets: &mut ResMut<Assets<Image>>,
+        stack_pos: usize,
+    ) -> Self {
         let sprite = piece.sprite_clone();
         Self {
             piece: PieceComponent {
                 index: piece.index(),
                 width: sprite.width() as f32,
                 height: sprite.height() as f32,
+                stack_pos,
             },
             sprite: SpriteBundle {
                 texture: image_assets.add(sprite.into()),
@@ -47,4 +53,24 @@ impl PieceBundle {
             },
         }
     }
+}
+
+#[derive(Resource)]
+pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
+
+#[derive(Resource)]
+pub struct PieceStack(pub Vec<Entity>);
+
+impl PieceStack {
+    pub fn put_on_top(&mut self, piece: &mut PieceComponent, entity: Entity) {
+        self.0.remove(piece.stack_pos);
+        piece.stack_pos = self.0.len();
+        self.0.push(entity);
+    }
+}
+
+#[derive(Resource)]
+pub struct HeldPiece {
+    pub index: PieceIndex,
+    pub cursor_position: Vec2,
 }

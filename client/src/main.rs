@@ -5,16 +5,16 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 use bevy::window::{CursorGrabMode, PrimaryWindow};
-use game::{PieceIndex, PieceMoveEvent, Puzzle};
+use game::{PieceMoveEvent, Puzzle};
 
 mod piece;
-use piece::{PieceBundle, PieceComponent};
+use piece::{HeldPiece, PieceBundle, PieceComponent, PieceMap, PieceStack};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        //.add_plugin(LogDiagnosticsPlugin::default())
-        //.add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_system(bevy::window::close_on_esc)
         .add_startup_system(setup)
         .add_event::<PieceMoveEvent>()
@@ -25,46 +25,24 @@ fn main() {
         .run();
 }
 
-#[derive(Resource)]
-struct PieceMap {
-    map: HashMap<PieceIndex, Entity>,
-}
-
-#[derive(Resource)]
-struct PieceStack {
-    stack: Vec<Entity>,
-    to_front: Vec<Entity>,
-}
-
 fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
     commands.spawn(Camera2dBundle::default());
 
     let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
-    let mut piece_map = PieceMap {
-        map: HashMap::new(),
-    };
-    let mut piece_stack = PieceStack {
-        stack: Vec::new(),
-        to_front: Vec::new(),
-    };
+    let mut piece_map = PieceMap(HashMap::new());
+    let mut piece_stack = PieceStack(Vec::new());
 
-    for piece in puzzle.pieces() {
+    for (i, piece) in puzzle.pieces().enumerate() {
         let piece_entity = commands
-            .spawn(PieceBundle::from_piece(&piece, &mut image_assets))
+            .spawn(PieceBundle::from_piece(&piece, &mut image_assets, i))
             .id();
-        piece_map.map.insert(piece.index(), piece_entity);
-        piece_stack.stack.push(piece_entity);
+        piece_map.0.insert(piece.index(), piece_entity);
+        piece_stack.0.push(piece_entity);
     }
 
     commands.insert_resource(puzzle);
     commands.insert_resource(piece_map);
     commands.insert_resource(piece_stack);
-}
-
-#[derive(Resource)]
-struct HeldPiece {
-    index: PieceIndex,
-    cursor_position: Vec2,
 }
 
 fn click_piece(
@@ -165,52 +143,29 @@ fn drag_piece(
 
 fn move_piece(
     mut piece_move_events: EventReader<PieceMoveEvent>,
-    mut piece_query: Query<&mut Transform, With<PieceComponent>>,
+    mut piece_query: Query<(&mut Transform, &mut PieceComponent)>,
     piece_map: Res<PieceMap>,
     mut piece_stack: ResMut<PieceStack>,
 ) {
     for event in piece_move_events.iter() {
-        let piece_entity = piece_map.map.get(&event.index).unwrap().clone();
-        let mut piece_transform = piece_query.get_mut(piece_entity).unwrap();
-        piece_transform.translation.x = event.x;
-        piece_transform.translation.y = event.y;
-        piece_transform.rotation = Quat::from_rotation_z(event.rotation);
-        piece_stack.to_front.push(piece_entity);
+        let piece_entity = piece_map.0.get(&event.index).unwrap().clone();
+        let (mut transform, mut piece) = piece_query.get_mut(piece_entity).unwrap();
+        transform.translation.x = event.x;
+        transform.translation.y = event.y;
+        transform.rotation = Quat::from_rotation_z(event.rotation);
     }
 }
 
 fn sort_pieces(
-    mut piece_query: Query<&mut Transform, With<PieceComponent>>,
+    mut piece_query: Query<(&mut Transform, &mut PieceComponent), With<PieceComponent>>,
     mut piece_stack: ResMut<PieceStack>,
 ) {
-    let piece_iter_mut = piece_query.iter_mut();
+    let highest_piece_z = 900.0;
+    let z_step = highest_piece_z / piece_stack.0.len() as f32;
 
-    let highest_piece = 900.0;
-    let step = highest_piece / piece_iter_mut.len() as f32 * 2.0;
-
-    for mut transform in piece_iter_mut {
-        transform.translation.z = 0.0;
+    for (i, piece_entity) in piece_stack.0.iter().enumerate() {
+        let (mut transform, mut piece) = piece_query.get_mut(piece_entity.clone()).unwrap();
+        transform.translation.z = i as f32 * z_step;
+        piece.stack_pos = i;
     }
-
-    let mut acc: f32 = 0.0;
-    for piece_entity in piece_stack.to_front.iter().rev() {
-        let mut transform = piece_query.get_mut(piece_entity.clone()).unwrap();
-        transform.translation.z = highest_piece - (acc * step);
-        acc += 1.0;
-    }
-
-    let mut new_stack = Vec::new();
-
-    acc = 0.0;
-    for piece_entity in piece_stack.stack.drain(..) {
-        let mut transform = piece_query.get_mut(piece_entity.clone()).unwrap();
-        if transform.translation.z == 0.0 {
-            transform.translation.z = acc * step;
-            acc += 1.0;
-            new_stack.push(piece_entity)
-        }
-    }
-
-    new_stack.extend(piece_stack.to_front.drain(..));
-    piece_stack.stack = new_stack;
 }
