@@ -1,7 +1,7 @@
 # TODO
-* manage z height of pieces when they move
 * rotation of pieces
 * check wasm performance
+* transform and rebroadcast cursor move event for convenience
 
 # architecture
 - server

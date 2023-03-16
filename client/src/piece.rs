@@ -1,3 +1,5 @@
+use std::slice::Iter;
+
 use bevy::{prelude::*, utils::HashMap};
 
 use game::{Piece, PieceIndex};
@@ -26,7 +28,7 @@ impl PieceComponent {
 
 #[derive(Bundle)]
 pub struct PieceBundle {
-    piece: PieceComponent,
+    pub piece: PieceComponent,
 
     #[bundle]
     sprite: SpriteBundle,
@@ -59,13 +61,24 @@ impl PieceBundle {
 pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
 
 #[derive(Resource)]
-pub struct PieceStack(pub Vec<Entity>);
+pub struct PieceStack(Vec<Entity>);
 
 impl PieceStack {
+    pub fn new(vec: Vec<Entity>) -> Self {
+        return Self(vec);
+    }
+
     pub fn put_on_top(&mut self, piece: &mut PieceComponent, entity: Entity) {
-        self.0.remove(piece.stack_pos);
         piece.stack_pos = self.0.len();
         self.0.push(entity);
+    }
+
+    pub fn iter(&self) -> Iter<'_, Entity> {
+        self.0.iter()
+    }
+
+    pub fn replace_stack(&mut self, new_stack: Vec<Entity>) {
+        self.0 = new_stack;
     }
 }
 

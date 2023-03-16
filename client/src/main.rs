@@ -30,27 +30,27 @@ fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
 
     let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
     let mut piece_map = PieceMap(HashMap::new());
-    let mut piece_stack = PieceStack(Vec::new());
+    let mut piece_stack = Vec::new();
 
     for (i, piece) in puzzle.pieces().enumerate() {
-        let piece_entity = commands
-            .spawn(PieceBundle::from_piece(&piece, &mut image_assets, i))
-            .id();
+        let piece_bundle = PieceBundle::from_piece(&piece, &mut image_assets, i);
+        let piece_entity = commands.spawn(piece_bundle).id();
         piece_map.0.insert(piece.index(), piece_entity);
-        piece_stack.0.push(piece_entity);
+        piece_stack.push(piece_entity);
     }
 
     commands.insert_resource(puzzle);
     commands.insert_resource(piece_map);
-    commands.insert_resource(piece_stack);
+    commands.insert_resource(PieceStack::new(piece_stack));
 }
 
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
-    held_piece: Option<ResMut<HeldPiece>>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
     mut window_query: Query<&mut Window, With<PrimaryWindow>>,
-    piece_query: Query<(&GlobalTransform, &PieceComponent)>,
+    mut piece_query: Query<(&GlobalTransform, &mut PieceComponent, Entity)>,
+    held_piece: Option<ResMut<HeldPiece>>,
+    mut piece_stack: ResMut<PieceStack>,
     mut commands: Commands,
 ) {
     for event in mouse_button_events.iter() {
@@ -66,10 +66,10 @@ fn click_piece(
                             .map(|ray| ray.origin)
                         {
                             // prioritize highest z value (piece on top)
-                            let mut candidate_index = None;
+                            let mut candidate_entity = None;
                             let mut candidate_z = f32::NEG_INFINITY;
 
-                            for (piece_transform, piece) in piece_query.iter() {
+                            for (piece_transform, piece, piece_entity) in piece_query.iter() {
                                 let inverse_transform = Transform::from_matrix(
                                     piece_transform.compute_matrix().inverse(),
                                 );
@@ -85,16 +85,19 @@ fn click_piece(
                                     && relative_click_pos.y.abs() <= half_height
                                     && piece_z > candidate_z
                                 {
-                                    candidate_index = Some(piece.index());
+                                    candidate_entity = Some(piece_entity);
                                     candidate_z = piece_z;
                                 }
                             }
 
-                            if let Some(index) = candidate_index {
+                            if let Some(piece_entity) = candidate_entity {
+                                let (_, mut piece, _) = piece_query.get_mut(piece_entity).unwrap();
                                 commands.insert_resource(HeldPiece {
-                                    index,
+                                    index: piece.index(),
                                     cursor_position: click_pos.truncate(),
                                 });
+
+                                piece_stack.put_on_top(&mut piece, candidate_entity.unwrap());
 
                                 // grab cursor while holding piece to prevent moving far out of frame
                                 window.cursor.grab_mode = CursorGrabMode::Confined;
@@ -153,6 +156,7 @@ fn move_piece(
         transform.translation.x = event.x;
         transform.translation.y = event.y;
         transform.rotation = Quat::from_rotation_z(event.rotation);
+        piece_stack.put_on_top(&mut piece, piece_entity);
     }
 }
 
@@ -160,12 +164,22 @@ fn sort_pieces(
     mut piece_query: Query<(&mut Transform, &mut PieceComponent), With<PieceComponent>>,
     mut piece_stack: ResMut<PieceStack>,
 ) {
+    let piece_count = piece_query.iter().len();
     let highest_piece_z = 900.0;
-    let z_step = highest_piece_z / piece_stack.0.len() as f32;
+    let z_step = highest_piece_z / piece_count as f32;
 
-    for (i, piece_entity) in piece_stack.0.iter().enumerate() {
+    let mut new_stack = Vec::new();
+    let mut stack_offset = 0;
+    for (i, piece_entity) in piece_stack.iter().enumerate() {
         let (mut transform, mut piece) = piece_query.get_mut(piece_entity.clone()).unwrap();
-        transform.translation.z = i as f32 * z_step;
-        piece.stack_pos = i;
+        if piece.stack_pos == i {
+            piece.stack_pos -= stack_offset;
+            transform.translation.z = piece.stack_pos as f32 * z_step;
+            new_stack.push(piece_entity.clone());
+        } else {
+            stack_offset += 1;
+        }
     }
+
+    piece_stack.replace_stack(new_stack);
 }
