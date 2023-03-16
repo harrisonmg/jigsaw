@@ -61,24 +61,12 @@ impl PieceBundle {
 pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
 
 #[derive(Resource)]
-pub struct PieceStack(Vec<Entity>);
+pub struct PieceStack(pub Vec<Entity>);
 
 impl PieceStack {
-    pub fn new(vec: Vec<Entity>) -> Self {
-        return Self(vec);
-    }
-
     pub fn put_on_top(&mut self, piece: &mut PieceComponent, entity: Entity) {
         piece.stack_pos = self.0.len();
         self.0.push(entity);
-    }
-
-    pub fn iter(&self) -> Iter<'_, Entity> {
-        self.0.iter()
-    }
-
-    pub fn replace_stack(&mut self, new_stack: Vec<Entity>) {
-        self.0 = new_stack;
     }
 }
 

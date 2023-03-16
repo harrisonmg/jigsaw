@@ -30,18 +30,18 @@ fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
 
     let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
     let mut piece_map = PieceMap(HashMap::new());
-    let mut piece_stack = Vec::new();
+    let mut piece_stack = PieceStack(Vec::new());
 
     for (i, piece) in puzzle.pieces().enumerate() {
         let piece_bundle = PieceBundle::from_piece(&piece, &mut image_assets, i);
         let piece_entity = commands.spawn(piece_bundle).id();
         piece_map.0.insert(piece.index(), piece_entity);
-        piece_stack.push(piece_entity);
+        piece_stack.0.push(piece_entity);
     }
 
     commands.insert_resource(puzzle);
     commands.insert_resource(piece_map);
-    commands.insert_resource(PieceStack::new(piece_stack));
+    commands.insert_resource(piece_stack);
 }
 
 fn click_piece(
@@ -168,18 +168,19 @@ fn sort_pieces(
     let highest_piece_z = 900.0;
     let z_step = highest_piece_z / piece_count as f32;
 
-    let mut new_stack = Vec::new();
     let mut stack_offset = 0;
-    for (i, piece_entity) in piece_stack.iter().enumerate() {
-        let (mut transform, mut piece) = piece_query.get_mut(piece_entity.clone()).unwrap();
+    let mut i = 0;
+    piece_stack.0.retain(|piece_entity| {
+        let (mut transform, mut piece) = piece_query.get_mut(*piece_entity).unwrap();
         if piece.stack_pos == i {
             piece.stack_pos -= stack_offset;
             transform.translation.z = piece.stack_pos as f32 * z_step;
-            new_stack.push(piece_entity.clone());
+            i += 1;
+            return true;
         } else {
             stack_offset += 1;
+            i += 1;
+            return false;
         }
-    }
-
-    piece_stack.replace_stack(new_stack);
+    });
 }
