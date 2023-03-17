@@ -1,8 +1,8 @@
-use std::slice::Iter;
-
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle, utils::HashMap};
 
 use game::{Piece, PieceIndex};
+
+use crate::material::PieceMaterial;
 
 #[derive(Component)]
 pub struct PieceComponent {
@@ -31,25 +31,36 @@ pub struct PieceBundle {
     pub piece: PieceComponent,
 
     #[bundle]
-    sprite: SpriteBundle,
+    mesh_bundle: MaterialMesh2dBundle<PieceMaterial>,
 }
 
 impl PieceBundle {
-    pub fn from_piece(
+    pub fn new(
         piece: &Piece,
-        image_assets: &mut ResMut<Assets<Image>>,
         stack_pos: usize,
+        image_assets: &mut ResMut<Assets<Image>>,
+        meshes: &mut ResMut<Assets<Mesh>>,
+        materials: &mut ResMut<Assets<PieceMaterial>>,
     ) -> Self {
         let sprite = piece.sprite_clone();
+        let piece_component = PieceComponent {
+            index: piece.index(),
+            width: sprite.width() as f32,
+            height: sprite.height() as f32,
+            stack_pos,
+        };
+        let mesh = meshes.add(Mesh::from(shape::Quad::new(Vec2::new(
+            sprite.width() as f32,
+            sprite.height() as f32,
+        ))));
+        let material = materials.add(PieceMaterial {
+            texture: image_assets.add(sprite.into()),
+        });
         Self {
-            piece: PieceComponent {
-                index: piece.index(),
-                width: sprite.width() as f32,
-                height: sprite.height() as f32,
-                stack_pos,
-            },
-            sprite: SpriteBundle {
-                texture: image_assets.add(sprite.into()),
+            piece: piece_component,
+            mesh_bundle: MaterialMesh2dBundle {
+                mesh: mesh.into(),
+                material,
                 transform: piece.transform(),
                 ..Default::default()
             },

@@ -2,12 +2,16 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
+use bevy::sprite::Material2dPlugin;
 use bevy::utils::HashMap;
 
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use game::{PieceMoveEvent, Puzzle};
 
+mod material;
 mod piece;
+
+use material::PieceMaterial;
 use piece::{HeldPiece, PieceBundle, PieceComponent, PieceMap, PieceStack};
 
 fn main() {
@@ -16,6 +20,7 @@ fn main() {
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_system(bevy::window::close_on_esc)
+        .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_startup_system(setup)
         .add_event::<PieceMoveEvent>()
         .add_system(click_piece)
@@ -25,7 +30,12 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
+fn setup(
+    mut commands: Commands,
+    mut image_assets: ResMut<Assets<Image>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<PieceMaterial>>,
+) {
     commands.spawn(Camera2dBundle::default());
 
     let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
@@ -33,7 +43,8 @@ fn setup(mut commands: Commands, mut image_assets: ResMut<Assets<Image>>) {
     let mut piece_stack = PieceStack(Vec::new());
 
     for (i, piece) in puzzle.pieces().enumerate() {
-        let piece_bundle = PieceBundle::from_piece(&piece, &mut image_assets, i);
+        let piece_bundle =
+            PieceBundle::new(&piece, i, &mut image_assets, &mut meshes, &mut materials);
         let piece_entity = commands.spawn(piece_bundle).id();
         piece_map.0.insert(piece.index(), piece_entity);
         piece_stack.0.push(piece_entity);
