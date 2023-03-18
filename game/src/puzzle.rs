@@ -6,9 +6,10 @@ use std::{
     path::Path,
 };
 
+use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
-use crate::{Piece, PieceIndex, PieceMoveEvent};
+use crate::{Piece, PieceIndex, PieceMoveEvent, BORDER_SIZE_FRACTION};
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
@@ -60,6 +61,22 @@ impl Puzzle {
         )
         .to_image();
 
+        let mut border_size = piece_width.min(piece_height) / BORDER_SIZE_FRACTION;
+        if border_size % 2 == 1 {
+            border_size -= 1;
+        }
+
+        let mut image_w_border = RgbaImage::new(
+            image.width() + 2 * border_size,
+            image.height() + 2 * border_size,
+        );
+
+        for (x, y, pixel) in image.enumerate_pixels() {
+            *(image_w_border.get_pixel_mut(x + border_size, y + border_size)) = *pixel;
+        }
+
+        image = image_w_border;
+
         let mut piece_map = HashMap::new();
         for row in 0..puzzle_height {
             for col in 0..puzzle_width {
@@ -68,6 +85,7 @@ impl Puzzle {
                     index,
                     piece_width,
                     piece_height,
+                    border_size,
                     &mut image,
                     puzzle_width,
                     puzzle_height,

@@ -9,6 +9,7 @@ use usvg::NodeExt;
 const TAB_LENGTH_RATIO: f64 = 0.34;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.38;
 const TAB_INNER_SIZE_RATIO: f64 = 0.24;
+pub(crate) const BORDER_SIZE_FRACTION: u32 = 10;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct PieceIndex(pub u8, pub u8);
@@ -213,13 +214,14 @@ impl Piece {
         index: PieceIndex,
         piece_width: u32,
         piece_height: u32,
+        border_size: u32,
         image: &mut image::RgbaImage,
         puzzle_width: u8,
         puzzle_height: u8,
     ) -> Self {
         let kind = PieceKind::new(index, puzzle_width, puzzle_height);
 
-        let sprite = Piece::cut_sprite(index, piece_width, piece_height, image, kind);
+        let sprite = Piece::cut_sprite(index, piece_width, piece_height, border_size, image, kind);
 
         Piece {
             index,
@@ -246,6 +248,7 @@ impl Piece {
         index: PieceIndex,
         piece_width: u32,
         piece_height: u32,
+        border_size: u32,
         image: &mut image::RgbaImage,
         kind: PieceKind,
     ) -> image::RgbaImage {
@@ -254,8 +257,8 @@ impl Piece {
         let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
         let (north_blank, south_blank, east_blank, west_blank) = kind.blanks();
 
-        let sprite_width = piece_width + tab_width * (east_tab + west_tab);
-        let sprite_height = piece_height + tab_height * (north_tab + south_tab);
+        let sprite_width = piece_width + tab_width * (east_tab + west_tab) + 2 * border_size;
+        let sprite_height = piece_height + tab_height * (north_tab + south_tab) + 2 * border_size;
 
         let mut crop = image::imageops::crop(
             image,
@@ -277,8 +280,8 @@ impl Piece {
         };
 
         let mut path_data = usvg::PathData::new();
-        let mut cursor_x: f64 = (west_tab * tab_width).into();
-        let mut cursor_y: f64 = (north_tab * tab_height).into();
+        let mut cursor_x: f64 = (west_tab * tab_width + border_size).into();
+        let mut cursor_y: f64 = (north_tab * tab_height + border_size).into();
 
         // start in northwest corner
         path_data.push_move_to(cursor_x, cursor_y);

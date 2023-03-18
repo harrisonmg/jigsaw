@@ -7,22 +7,12 @@ use crate::material::PieceMaterial;
 #[derive(Component)]
 pub struct PieceComponent {
     index: PieceIndex,
-    width: f32,
-    height: f32,
     pub stack_pos: usize,
 }
 
 impl PieceComponent {
     pub fn index(&self) -> PieceIndex {
         self.index
-    }
-
-    pub fn width(&self) -> f32 {
-        self.width
-    }
-
-    pub fn height(&self) -> f32 {
-        self.height
     }
 }
 
@@ -32,6 +22,8 @@ pub struct PieceBundle {
 
     #[bundle]
     mesh_bundle: MaterialMesh2dBundle<PieceMaterial>,
+    //#[bundle]
+    //sprite_bundle: SpriteBundle,
 }
 
 impl PieceBundle {
@@ -45,8 +37,6 @@ impl PieceBundle {
         let sprite = piece.sprite_clone();
         let piece_component = PieceComponent {
             index: piece.index(),
-            width: sprite.width() as f32,
-            height: sprite.height() as f32,
             stack_pos,
         };
         let mesh = meshes.add(Mesh::from(shape::Quad::new(Vec2::new(
@@ -64,6 +54,11 @@ impl PieceBundle {
                 transform: piece.transform(),
                 ..Default::default()
             },
+            //sprite_bundle: SpriteBundle {
+            //    texture: image_assets.add(sprite.into()),
+            //    transform: piece.transform(),
+            //    ..Default::default()
+            //},
         }
     }
 }

@@ -9,6 +9,7 @@ use bevy::{
 #[uuid = "77a244f3-9ff1-47e7-87de-97ffd4650eeb"]
 pub struct PieceMaterial {
     #[texture(0)]
+    #[sampler(1)]
     pub texture: Handle<Image>,
 }
 

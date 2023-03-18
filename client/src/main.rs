@@ -1,5 +1,5 @@
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy::input::mouse::MouseButtonInput;
+use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
@@ -27,6 +27,7 @@ fn main() {
         .add_system(drag_piece)
         .add_system(move_piece)
         .add_system(sort_pieces)
+        .add_system(zoom)
         .run();
 }
 
@@ -38,7 +39,7 @@ fn setup(
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
+    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 100);
     let mut piece_map = PieceMap(HashMap::new());
     let mut piece_stack = PieceStack(Vec::new());
 
@@ -60,6 +61,7 @@ fn click_piece(
     camera_query: Query<(&Camera, &GlobalTransform)>,
     mut window_query: Query<&mut Window, With<PrimaryWindow>>,
     mut piece_query: Query<(&GlobalTransform, &mut PieceComponent, Entity)>,
+    puzzle: Res<Puzzle>,
     held_piece: Option<ResMut<HeldPiece>>,
     mut piece_stack: ResMut<PieceStack>,
     mut commands: Commands,
@@ -80,15 +82,15 @@ fn click_piece(
                             let mut candidate_entity = None;
                             let mut candidate_z = f32::NEG_INFINITY;
 
-                            for (piece_transform, piece, piece_entity) in piece_query.iter() {
+                            for (piece_transform, _, piece_entity) in piece_query.iter() {
                                 let inverse_transform = Transform::from_matrix(
                                     piece_transform.compute_matrix().inverse(),
                                 );
                                 let relative_click_pos =
                                     inverse_transform.transform_point(click_pos);
 
-                                let half_width = piece.width() / 2.0;
-                                let half_height = piece.height() / 2.0;
+                                let half_width = puzzle.piece_width() as f32 / 2.0;
+                                let half_height = puzzle.piece_height() as f32 / 2.0;
 
                                 let piece_z = piece_transform.translation().z;
 
@@ -194,4 +196,16 @@ fn sort_pieces(
             return false;
         }
     });
+}
+
+fn zoom(
+    mut scroll_events: EventReader<MouseWheel>,
+    mut projection_query: Query<&mut OrthographicProjection>,
+) {
+    let mut projection = projection_query.get_single_mut().unwrap();
+    let mut zoom_scale = projection.scale.ln();
+    for event in scroll_events.iter() {
+        zoom_scale -= event.y / 10.0;
+    }
+    projection.scale = zoom_scale.exp();
 }

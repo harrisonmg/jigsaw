@@ -1,7 +1,11 @@
 # TODO
+* sprite border
+* performance worse?
 * rotation of pieces
 * check wasm performance
 * transform and rebroadcast cursor move event for convenience
+* zoom click pos is broken
+* zoom centered on cursor pos
 
 # architecture
 - server
