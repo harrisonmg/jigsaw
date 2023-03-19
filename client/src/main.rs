@@ -61,11 +61,12 @@ fn setup(
 #[allow(clippy::too_many_arguments)]
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
+    mut piece_move_events: EventWriter<PieceMoveEvent>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
     mut window_query: Query<&mut Window, With<PrimaryWindow>>,
     mut piece_query: Query<(&GlobalTransform, &mut PieceComponent, Entity)>,
-    puzzle: Res<Puzzle>,
-    held_piece: Option<ResMut<HeldPiece>>,
+    mut puzzle: ResMut<Puzzle>,
+    mut held_piece: Option<ResMut<HeldPiece>>,
     mut piece_stack: ResMut<PieceStack>,
     mut commands: Commands,
 ) {
@@ -125,6 +126,9 @@ fn click_piece(
                 }
                 ButtonState::Released => {
                     if held_piece.is_some() {
+                        let piece = held_piece.unwrap();
+                        piece_move_events.send_batch(puzzle.piece_connection(&piece.index));
+                        held_piece = None;
                         commands.remove_resource::<HeldPiece>();
                         let mut window = window_query.single_mut();
                         window.cursor.grab_mode = CursorGrabMode::None;

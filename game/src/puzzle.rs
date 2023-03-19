@@ -176,4 +176,8 @@ impl Puzzle {
         })
         .unwrap()
     }
+
+    pub fn piece_connection(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
+        Vec::new()
+    }
 }
