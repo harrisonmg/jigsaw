@@ -14,6 +14,8 @@ pub struct PieceMaterial {
 
     #[uniform(2)]
     pub sprite_origin: Vec2,
+    //#[uniform(3)]
+    //pub sides: u32,
 }
 
 impl Material2d for PieceMaterial {

@@ -16,9 +16,9 @@ var<uniform> sprite_origin: vec2<f32>;
  * 0b0100 = east
  * 0b1000 = west
  */
-/*@group(1) @binding(2)*/
+/*@group(1) @binding(3)*/
 /*var sides: u32;*/
-const sides: u32 = 1u;
+const sides: u32 = 15u;
 
 const directions: f32 = 8.0;
 const quality: f32 = 4.0;
@@ -58,21 +58,21 @@ fn fragment(
     // uncomment to debug edges
 
     /*if uv_prime.x < 0.0 {*/
-    /*   if uv_prime.y > 0.0 {*/
-    /*       // west*/
-    /*       return vec4(1.0, 0.0, 0.0, 1.0);*/
-    /*   } else if uv_prime.y < 0.0 {*/
-    /*       // north*/
-    /*       return vec4(0.0, 1.0, 0.0, 1.0);*/
-    /*   }*/
+    /*  if uv_prime.y > 0.0 {*/
+    /*      // west*/
+    /*      return vec4(1.0, 0.0, 0.0, 1.0);*/
+    /*  } else if uv_prime.y < 0.0 {*/
+    /*      // north*/
+    /*      return vec4(0.0, 1.0, 0.0, 1.0);*/
+    /*  }*/
     /*} else {*/
-    /*   if uv_prime.y > 0.0 {*/
-    /*       // south*/
-    /*       return vec4(0.0, 0.0, 1.0, 1.0);*/
-    /*   } else if uv_prime.y < 0.0 {*/
-    /*       // east*/
-    /*       return vec4(1.0, 0.0, 1.0, 1.0);*/
-    /*   }*/
+    /*  if uv_prime.y > 0.0 {*/
+    /*      // south*/
+    /*      return vec4(0.0, 0.0, 1.0, 1.0);*/
+    /*  } else if uv_prime.y < 0.0 {*/
+    /*      // east*/
+    /*      return vec4(1.0, 0.0, 1.0, 1.0);*/
+    /*  }*/
     /*}*/
 
     if uv_prime.x < 0.0 {

@@ -22,8 +22,6 @@ pub struct PieceBundle {
 
     #[bundle]
     mesh_bundle: MaterialMesh2dBundle<PieceMaterial>,
-    //#[bundle]
-    //sprite_bundle: SpriteBundle,
 }
 
 impl PieceBundle {
@@ -65,11 +63,6 @@ impl PieceBundle {
                 transform: piece.transform(),
                 ..Default::default()
             },
-            //sprite_bundle: SpriteBundle {
-            //    texture: image_assets.add(sprite.into()),
-            //    transform: piece.transform(),
-            //    ..Default::default()
-            //},
         }
     }
 }
