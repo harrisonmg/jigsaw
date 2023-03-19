@@ -43,19 +43,22 @@ fn setup(
     let mut piece_map = PieceMap(HashMap::new());
     let mut piece_stack = PieceStack(Vec::new());
 
-    for (i, piece) in puzzle.pieces().enumerate() {
+    let mut i = 0;
+    puzzle.with_pieces(|piece| {
         let piece_bundle =
-            PieceBundle::new(&piece, i, &mut image_assets, &mut meshes, &mut materials);
+            PieceBundle::new(piece, i, &mut image_assets, &mut meshes, &mut materials);
         let piece_entity = commands.spawn(piece_bundle).id();
         piece_map.0.insert(piece.index(), piece_entity);
         piece_stack.0.push(piece_entity);
-    }
+        i += 1;
+    });
 
     commands.insert_resource(puzzle);
     commands.insert_resource(piece_map);
     commands.insert_resource(piece_stack);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
@@ -164,7 +167,7 @@ fn move_piece(
     mut piece_stack: ResMut<PieceStack>,
 ) {
     for event in piece_move_events.iter() {
-        let piece_entity = piece_map.0.get(&event.index).unwrap().clone();
+        let piece_entity = *piece_map.0.get(&event.index).unwrap();
         let (mut transform, mut piece) = piece_query.get_mut(piece_entity).unwrap();
         transform.translation.x = event.x;
         transform.translation.y = event.y;
@@ -189,11 +192,11 @@ fn sort_pieces(
             piece.stack_pos -= stack_offset;
             transform.translation.z = piece.stack_pos as f32 * z_step;
             i += 1;
-            return true;
+            true
         } else {
             stack_offset += 1;
             i += 1;
-            return false;
+            false
         }
     });
 }

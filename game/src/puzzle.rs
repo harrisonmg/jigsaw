@@ -1,9 +1,7 @@
 use std::{
-    collections::{
-        hash_map::{Values, ValuesMut},
-        HashMap,
-    },
+    collections::HashMap,
     path::Path,
+    sync::{Arc, RwLock},
 };
 
 use image::RgbaImage;
@@ -16,9 +14,10 @@ pub struct Puzzle {
     image: crate::image::Image,
     puzzle_width: u8,
     puzzle_height: u8,
-    piece_map: HashMap<PieceIndex, Piece>,
     piece_width: u32,
     piece_height: u32,
+    piece_map: HashMap<PieceIndex, Arc<RwLock<Piece>>>,
+    groups: Vec<Vec<Arc<RwLock<Piece>>>>,
 }
 
 impl Puzzle {
@@ -77,31 +76,33 @@ impl Puzzle {
 
         image = image_w_border;
 
-        let mut piece_map = HashMap::new();
+        let piece_map = HashMap::new();
+        let groups = Vec::new();
+
+        let mut puzzle = Self {
+            image: crate::image::Image::empty(),
+            puzzle_width,
+            puzzle_height,
+            piece_width,
+            piece_height,
+            piece_map,
+            groups,
+        };
+
         for row in 0..puzzle_height {
             for col in 0..puzzle_width {
                 let index = PieceIndex(row, col);
-                let piece = Piece::new(
-                    index,
-                    piece_width,
-                    piece_height,
-                    border_size,
-                    &mut image,
-                    puzzle_width,
-                    puzzle_height,
-                );
-                piece_map.insert(index, piece);
+                let piece =
+                    Piece::new(&puzzle, index, puzzle.groups.len(), &mut image, border_size);
+                let piece_ref = Arc::new(RwLock::new(piece));
+
+                puzzle.piece_map.insert(index, piece_ref.clone());
+                puzzle.groups.push(vec![piece_ref]);
             }
         }
 
-        Self {
-            image: image.into(),
-            puzzle_width,
-            puzzle_height,
-            piece_map,
-            piece_width,
-            piece_height,
-        }
+        puzzle.image = image.into();
+        puzzle
     }
 
     pub fn image(&self) -> crate::image::Image {
@@ -116,20 +117,36 @@ impl Puzzle {
         self.puzzle_height
     }
 
-    pub fn piece(&self, index: PieceIndex) -> Option<&Piece> {
-        self.piece_map.get(&index)
+    #[allow(unused)]
+    fn with_piece<T>(&self, index: &PieceIndex, op: impl FnOnce(&Piece) -> T) -> Option<T> {
+        self.piece_map
+            .get(index)
+            .map(|piece_ref| op(&piece_ref.read().unwrap()))
     }
 
-    pub fn piece_mut(&mut self, index: &PieceIndex) -> Option<&mut Piece> {
-        self.piece_map.get_mut(index)
+    fn with_piece_mut<T>(
+        &mut self,
+        index: &PieceIndex,
+        op: impl FnOnce(&mut Piece) -> T,
+    ) -> Option<T> {
+        self.piece_map
+            .get_mut(index)
+            .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
     }
 
-    pub fn pieces(&self) -> Values<PieceIndex, Piece> {
-        self.piece_map.values()
+    pub fn with_pieces(&self, mut op: impl FnMut(&Piece)) {
+        self.piece_map
+            .values()
+            .map(|piece_ref| op(&piece_ref.read().unwrap()))
+            .collect()
     }
 
-    pub fn pieces_mut(&mut self) -> ValuesMut<PieceIndex, Piece> {
-        self.piece_map.values_mut()
+    #[allow(unused)]
+    fn with_pieces_mut(&mut self, mut op: impl FnMut(&mut Piece)) {
+        self.piece_map
+            .values_mut()
+            .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
+            .collect()
     }
 
     pub fn piece_width(&self) -> u32 {
@@ -141,18 +158,22 @@ impl Puzzle {
     }
 
     pub fn move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMoveEvent> {
-        let piece = self.piece_mut(index).unwrap();
-        let mut translation = &mut piece.transform.translation;
-        translation.x = x;
-        translation.y = y;
-        vec![PieceMoveEvent::from_piece(piece)]
+        self.with_piece_mut(index, |piece| {
+            let mut translation = &mut piece.transform.translation;
+            translation.x = x;
+            translation.y = y;
+            vec![PieceMoveEvent::from_piece(piece)]
+        })
+        .unwrap()
     }
 
     pub fn move_piece_rel(&mut self, index: &PieceIndex, dx: f32, dy: f32) -> Vec<PieceMoveEvent> {
-        let piece = self.piece_mut(index).unwrap();
-        let mut translation = &mut piece.transform.translation;
-        translation.x += dx;
-        translation.y += dy;
-        vec![PieceMoveEvent::from_piece(piece)]
+        self.with_piece_mut(index, |piece| {
+            let mut translation = &mut piece.transform.translation;
+            translation.x += dx;
+            translation.y += dy;
+            vec![PieceMoveEvent::from_piece(piece)]
+        })
+        .unwrap()
     }
 }

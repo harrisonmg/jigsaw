@@ -6,6 +6,8 @@ use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
 use usvg::NodeExt;
 
+use crate::Puzzle;
+
 const TAB_LENGTH_RATIO: f64 = 0.30;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
 const TAB_INNER_SIZE_RATIO: f64 = 0.22;
@@ -209,22 +211,27 @@ pub struct Piece {
     sprite_origin_x: u32,
     sprite_origin_y: u32,
     pub(crate) transform: Transform,
+    pub(crate) group_index: usize,
 }
 
 impl Piece {
     pub fn new(
+        puzzle: &Puzzle,
         index: PieceIndex,
-        piece_width: u32,
-        piece_height: u32,
-        border_size: u32,
+        group_index: usize,
         image: &mut image::RgbaImage,
-        puzzle_width: u8,
-        puzzle_height: u8,
+        border_size: u32,
     ) -> Self {
-        let kind = PieceKind::new(index, puzzle_width, puzzle_height);
+        let kind = PieceKind::new(index, puzzle.puzzle_width(), puzzle.puzzle_height());
 
-        let (sprite, sprite_origin_x, sprite_origin_y) =
-            Piece::cut_sprite(index, piece_width, piece_height, border_size, image, kind);
+        let (sprite, sprite_origin_x, sprite_origin_y) = Piece::cut_sprite(
+            index,
+            puzzle.piece_width(),
+            puzzle.piece_height(),
+            border_size,
+            image,
+            kind,
+        );
 
         Piece {
             index,
@@ -233,6 +240,7 @@ impl Piece {
             sprite_origin_x,
             sprite_origin_y,
             transform: Transform::IDENTITY,
+            group_index,
         }
     }
 
@@ -444,5 +452,9 @@ impl Piece {
 
     pub fn transform(&self) -> Transform {
         self.transform
+    }
+
+    pub fn group_index(&self) -> usize {
+        self.group_index
     }
 }

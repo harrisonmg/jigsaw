@@ -10,6 +10,14 @@ pub struct Image {
 }
 
 impl Image {
+    pub fn empty() -> Self {
+        Self {
+            width: 0,
+            height: 0,
+            raw: Vec::new(),
+        }
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -29,16 +37,16 @@ impl From<image::RgbaImage> for Image {
     }
 }
 
-impl Into<BevyImageAsset> for Image {
-    fn into(self) -> BevyImageAsset {
+impl From<Image> for BevyImageAsset {
+    fn from(value: Image) -> Self {
         BevyImageAsset::new(
             bevy::render::render_resource::Extent3d {
-                width: self.width,
-                height: self.height,
+                width: value.width,
+                height: value.height,
                 depth_or_array_layers: 1,
             },
             bevy::render::render_resource::TextureDimension::D2,
-            self.raw,
+            value.raw,
             bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
         )
     }
