@@ -453,8 +453,4 @@ impl Piece {
     pub fn transform(&self) -> Transform {
         self.transform
     }
-
-    pub fn group_index(&self) -> usize {
-        self.group_index
-    }
 }

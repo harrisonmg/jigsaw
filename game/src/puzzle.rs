@@ -4,10 +4,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use bevy::transform::components::Transform;
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
 use crate::{Piece, PieceIndex, PieceMoveEvent, BORDER_SIZE_FRACTION};
+
+const CONNECTION_DISTANCE: f32 = 10.0;
+const CONNECTION_ANGLE: f32 = 0.5; // rad
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
@@ -124,6 +128,7 @@ impl Puzzle {
             .map(|piece_ref| op(&piece_ref.read().unwrap()))
     }
 
+    #[allow(unused)]
     fn with_piece_mut<T>(
         &mut self,
         index: &PieceIndex,
@@ -149,6 +154,20 @@ impl Puzzle {
             .collect()
     }
 
+    pub fn with_group(&self, group_index: usize, mut op: impl FnMut(&Piece)) {
+        self.groups[group_index]
+            .iter()
+            .map(|piece_ref| op(&piece_ref.read().unwrap()))
+            .collect()
+    }
+
+    pub fn with_group_mut(&mut self, group_index: usize, mut op: impl FnMut(&mut Piece)) {
+        self.groups[group_index]
+            .iter_mut()
+            .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
+            .collect()
+    }
+
     pub fn piece_width(&self) -> u32 {
         self.piece_width
     }
@@ -157,27 +176,92 @@ impl Puzzle {
         self.piece_height
     }
 
-    pub fn move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMoveEvent> {
-        self.with_piece_mut(index, |piece| {
-            let mut translation = &mut piece.transform.translation;
-            translation.x = x;
-            translation.y = y;
-            vec![PieceMoveEvent::from_piece(piece)]
-        })
-        .unwrap()
+    pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoveEvent> {
+        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        let mut events = Vec::new();
+        self.with_group_mut(group_index, |piece| {
+            piece.transform = transform;
+            events.push(PieceMoveEvent::from_piece(piece));
+        });
+        events
     }
 
     pub fn move_piece_rel(&mut self, index: &PieceIndex, dx: f32, dy: f32) -> Vec<PieceMoveEvent> {
-        self.with_piece_mut(index, |piece| {
+        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        let mut events = Vec::new();
+        self.with_group_mut(group_index, |piece| {
             let mut translation = &mut piece.transform.translation;
             translation.x += dx;
             translation.y += dy;
-            vec![PieceMoveEvent::from_piece(piece)]
-        })
-        .unwrap()
+            events.push(PieceMoveEvent::from_piece(piece));
+        });
+        events
     }
 
     pub fn piece_connection(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
+        let possible_neighbors = [
+            (index.0.saturating_add(1), index.1),
+            (index.0.saturating_sub(1), index.1),
+            (index.0, index.1.saturating_add(1)),
+            (index.0, index.1.saturating_sub(1)),
+        ];
+
+        let neighbors: Vec<_> = possible_neighbors
+            .into_iter()
+            .filter(|(row, col)| *row < self.puzzle_height && *col < self.puzzle_width)
+            .map(|other| PieceIndex(other.0, other.1))
+            .filter(|other| {
+                other != index
+                    && self.with_piece(index, |piece| piece.group_index)
+                        != self.with_piece(&other, |piece| piece.group_index)
+            })
+            .collect();
+
+        let mut connection_count = 0;
+        let closest = neighbors
+            .into_iter()
+            .map(|other| self.single_connection_check(index, &other))
+            .filter(|(_, distance, angle)| {
+                *distance <= CONNECTION_DISTANCE && *angle <= CONNECTION_ANGLE
+            })
+            .inspect(|_| connection_count += 1)
+            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        if let Some(closest) = closest {
+            let events = self.move_piece(index, closest.0);
+            return events;
+        }
+
         Vec::new()
+    }
+
+    fn single_connection_check(
+        &mut self,
+        index: &PieceIndex,
+        other: &PieceIndex,
+    ) -> (Transform, f32, f32) {
+        let perfect = self
+            .with_piece(other, |piece| {
+                let x = piece.transform.translation.x
+                    + (index.1 as f32 - other.1 as f32) * self.piece_width as f32;
+                let y = piece.transform.translation.y
+                    + (index.0 as f32 - other.0 as f32) * self.piece_height as f32;
+                Transform::from_xyz(x, y, 0.0)
+            })
+            .unwrap();
+
+        let (distance, angle) = self
+            .with_piece(index, |piece| {
+                (
+                    perfect
+                        .translation
+                        .truncate()
+                        .distance(piece.transform.translation.truncate()),
+                    perfect.rotation.angle_between(piece.transform.rotation),
+                )
+            })
+            .unwrap();
+
+        (perfect, distance, angle)
     }
 }

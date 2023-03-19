@@ -1,5 +1,5 @@
 # TODO
-* performance worse?
+* maintain groups on connection, multible connection
 * rotation of pieces
 * check wasm performance
 * transform and rebroadcast cursor move event for convenience
