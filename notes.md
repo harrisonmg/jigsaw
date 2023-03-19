@@ -1,4 +1,5 @@
 # TODO
+* sprite origin
 * maintain groups on connection, multible connection
 * rotation of pieces
 * check wasm performance

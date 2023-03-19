@@ -242,6 +242,7 @@ impl Puzzle {
     ) -> (Transform, f32, f32) {
         let perfect = self
             .with_piece(other, |piece| {
+                // todo account for sprite size
                 let x = piece.transform.translation.x
                     + (index.1 as f32 - other.1 as f32) * self.piece_width as f32;
                 let y = piece.transform.translation.y
