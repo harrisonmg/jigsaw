@@ -16,7 +16,7 @@ use piece::{HeldPiece, PieceBundle, PieceComponent, PieceMap, PieceStack};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_system(bevy::window::close_on_esc)
@@ -39,7 +39,7 @@ fn setup(
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 100);
+    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
     let mut piece_map = PieceMap(HashMap::new());
     let mut piece_stack = PieceStack(Vec::new());
 

@@ -1,5 +1,4 @@
 # TODO
-* sprite border
 * performance worse?
 * rotation of pieces
 * check wasm performance

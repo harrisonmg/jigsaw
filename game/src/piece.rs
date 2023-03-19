@@ -6,9 +6,9 @@ use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
 use usvg::NodeExt;
 
-const TAB_LENGTH_RATIO: f64 = 0.34;
-const TAB_OUTER_SIZE_RATIO: f64 = 0.38;
-const TAB_INNER_SIZE_RATIO: f64 = 0.24;
+const TAB_LENGTH_RATIO: f64 = 0.30;
+const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
+const TAB_INNER_SIZE_RATIO: f64 = 0.22;
 pub(crate) const BORDER_SIZE_FRACTION: u32 = 10;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -206,6 +206,8 @@ pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
     sprite: crate::image::Image,
+    sprite_origin_x: u32,
+    sprite_origin_y: u32,
     pub(crate) transform: Transform,
 }
 
@@ -221,12 +223,15 @@ impl Piece {
     ) -> Self {
         let kind = PieceKind::new(index, puzzle_width, puzzle_height);
 
-        let sprite = Piece::cut_sprite(index, piece_width, piece_height, border_size, image, kind);
+        let (sprite, sprite_origin_x, sprite_origin_y) =
+            Piece::cut_sprite(index, piece_width, piece_height, border_size, image, kind);
 
         Piece {
             index,
             kind,
             sprite: sprite.into(),
+            sprite_origin_x,
+            sprite_origin_y,
             transform: Transform::IDENTITY,
         }
     }
@@ -251,7 +256,7 @@ impl Piece {
         border_size: u32,
         image: &mut image::RgbaImage,
         kind: PieceKind,
-    ) -> image::RgbaImage {
+    ) -> (image::RgbaImage, u32, u32) {
         let PieceIndex(row, col) = index;
         let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
         let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
@@ -259,6 +264,9 @@ impl Piece {
 
         let sprite_width = piece_width + tab_width * (east_tab + west_tab) + 2 * border_size;
         let sprite_height = piece_height + tab_height * (north_tab + south_tab) + 2 * border_size;
+
+        let sprite_origin_x = border_size + piece_width / 2 + west_tab * tab_width;
+        let sprite_origin_y = border_size + piece_height / 2 + north_tab * tab_height;
 
         let mut crop = image::imageops::crop(
             image,
@@ -411,7 +419,7 @@ impl Piece {
             pixel.channels_mut()[3] = mask.pixel(x, y).unwrap().alpha();
         }
 
-        crop
+        (crop, sprite_origin_x, sprite_origin_y)
     }
 
     pub fn index(&self) -> PieceIndex {
@@ -424,6 +432,14 @@ impl Piece {
 
     pub fn sprite_clone(&self) -> crate::image::Image {
         self.sprite.clone()
+    }
+
+    pub fn sprite_origin_x(&self) -> u32 {
+        self.sprite_origin_x
+    }
+
+    pub fn sprite_origin_y(&self) -> u32 {
+        self.sprite_origin_y
     }
 
     pub fn transform(&self) -> Transform {

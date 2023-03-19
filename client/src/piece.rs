@@ -35,16 +35,27 @@ impl PieceBundle {
         materials: &mut ResMut<Assets<PieceMaterial>>,
     ) -> Self {
         let sprite = piece.sprite_clone();
+
+        let sprite_width = sprite.width() as f32;
+        let sprite_height = sprite.height() as f32;
+
+        let sprite_origin_x = piece.sprite_origin_x() as f32 / sprite_width;
+        let sprite_origin_y = piece.sprite_origin_y() as f32 / sprite_height;
+
         let piece_component = PieceComponent {
             index: piece.index(),
             stack_pos,
         };
         let mesh = meshes.add(Mesh::from(shape::Quad::new(Vec2::new(
-            sprite.width() as f32,
-            sprite.height() as f32,
+            sprite_width,
+            sprite_height,
         ))));
         let material = materials.add(PieceMaterial {
             texture: image_assets.add(sprite.into()),
+            sprite_origin: Vec2 {
+                x: sprite_origin_x,
+                y: sprite_origin_y,
+            },
         });
         Self {
             piece: piece_component,

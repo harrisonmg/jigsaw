@@ -11,6 +11,9 @@ pub struct PieceMaterial {
     #[texture(0)]
     #[sampler(1)]
     pub texture: Handle<Image>,
+
+    #[uniform(2)]
+    pub sprite_origin: Vec2,
 }
 
 impl Material2d for PieceMaterial {
