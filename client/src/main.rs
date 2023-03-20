@@ -128,7 +128,7 @@ fn click_piece(
                 ButtonState::Released => {
                     if held_piece.is_some() {
                         let piece = held_piece.unwrap();
-                        piece_move_events.send_batch(puzzle.make_piece_connections(&piece.index));
+                        piece_move_events.send_batch(puzzle.make_group_connections(&piece.index));
                         held_piece = None;
                         commands.remove_resource::<HeldPiece>();
                         let mut window = window_query.single_mut();
@@ -157,8 +157,7 @@ fn drag_piece(
             let cursor_delta = cursor_position - held_piece.cursor_position;
             piece_move_events.send_batch(puzzle.move_piece_rel(
                 &held_piece.index,
-                cursor_delta.x,
-                cursor_delta.y,
+                Transform::from_xyz(cursor_delta.x, cursor_delta.y, 0.0),
             ));
             held_piece.cursor_position = cursor_position;
         }

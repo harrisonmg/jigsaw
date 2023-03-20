@@ -1,5 +1,4 @@
 # TODO
-* maintain groups on connection, multiple connection
 * rotation of pieces
 * outline at low z height
 * check wasm performance

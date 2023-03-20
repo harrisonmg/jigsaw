@@ -178,28 +178,35 @@ impl Puzzle {
 
     pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoveEvent> {
         // TODO calculate delta and move whole group with it
+        let piece_transform = self.with_piece(index, |piece| piece.transform).unwrap();
+        let inverse_piece_transform =
+            Transform::from_matrix(piece_transform.compute_matrix().inverse());
+        let delta = transform.mul_transform(inverse_piece_transform);
+        self.move_piece_rel(index, delta)
+    }
+
+    pub fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoveEvent> {
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
         self.with_group_mut(group_index, |piece| {
-            piece.transform = transform;
+            piece.transform = piece.transform.mul_transform(delta);
             events.push(PieceMoveEvent::from_piece(piece));
         });
         events
     }
 
-    pub fn move_piece_rel(&mut self, index: &PieceIndex, dx: f32, dy: f32) -> Vec<PieceMoveEvent> {
-        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+    pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
         let mut events = Vec::new();
-        self.with_group_mut(group_index, |piece| {
-            let mut translation = &mut piece.transform.translation;
-            translation.x += dx;
-            translation.y += dy;
-            events.push(PieceMoveEvent::from_piece(piece));
-        });
+        let mut piece_indices = Vec::new();
+        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        self.with_group(group_index, |piece| piece_indices.push(piece.index()));
+        for index in piece_indices {
+            events.extend(self.make_piece_connections(&index));
+        }
         events
     }
 
-    pub fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
+    fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
         let possible_neighbors = [
             (index.0.saturating_add(1), index.1),
             (index.0.saturating_sub(1), index.1),
@@ -237,10 +244,10 @@ impl Puzzle {
             let old_group_index = self
                 .with_piece_mut(index, |piece| {
                     let old = piece.group_index;
-                    piece.group_index = new_group_index;
                     old
                 })
                 .unwrap();
+            self.with_group_mut(old_group_index, |piece| piece.group_index = new_group_index);
             let recruits = self.groups[old_group_index].drain(..).collect::<Vec<_>>();
             self.groups[new_group_index].extend(recruits);
 
