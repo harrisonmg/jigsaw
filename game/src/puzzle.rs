@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Piece, PieceIndex, PieceMoveEvent, BORDER_SIZE_FRACTION};
 
-const CONNECTION_DISTANCE: f32 = 10.0;
+const CONNECTION_DISTANCE: f32 = 30.0;
 const CONNECTION_ANGLE: f32 = 0.5; // rad
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
@@ -246,7 +246,7 @@ impl Puzzle {
                 let x = piece.transform.translation.x
                     + (index.1 as f32 - other.1 as f32) * self.piece_width as f32;
                 let y = piece.transform.translation.y
-                    + (index.0 as f32 - other.0 as f32) * self.piece_height as f32;
+                    + (other.0 as f32 - index.0 as f32) * self.piece_height as f32;
                 Transform::from_xyz(x, y, 0.0)
             })
             .unwrap();
@@ -257,7 +257,7 @@ impl Puzzle {
                     perfect
                         .translation
                         .truncate()
-                        .distance(piece.transform.translation.truncate()),
+                        .distance(piece.transform.translation.truncate()), // TODO scale to piece size
                     perfect.rotation.angle_between(piece.transform.rotation),
                 )
             })

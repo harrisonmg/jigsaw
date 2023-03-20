@@ -1,10 +1,9 @@
 # TODO
-* sprite origin
-* maintain groups on connection, multible connection
+* maintain groups on connection, multiple connection
 * rotation of pieces
+* outline at low z height
 * check wasm performance
 * transform and rebroadcast cursor move event for convenience
-* zoom click pos is broken
 * zoom centered on cursor pos
 
 # architecture

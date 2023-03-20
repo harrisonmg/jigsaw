@@ -8,6 +8,7 @@ use bevy::utils::HashMap;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use game::{PieceMoveEvent, Puzzle};
 
+mod better_quad;
 mod material;
 mod piece;
 

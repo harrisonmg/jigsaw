@@ -4,7 +4,7 @@ use bevy::{
 
 use game::{Piece, PieceIndex};
 
-use crate::material::PieceMaterial;
+use crate::{better_quad::BetterQuad, material::PieceMaterial};
 
 #[derive(Component)]
 pub struct PieceComponent {
@@ -47,7 +47,13 @@ impl PieceBundle {
             stack_pos,
         };
 
-        let mut mesh = Mesh::from(shape::Quad::new(Vec2::new(sprite_width, sprite_height)));
+        let mut mesh = Mesh::from(BetterQuad::new(
+            Vec2::new(sprite_width, sprite_height),
+            Vec2::new(
+                piece.sprite_origin_x() as f32,
+                piece.sprite_origin_y() as f32,
+            ),
+        ));
         let x_offset = 0.5 - sprite_origin_x;
         let y_offset = 0.5 - sprite_origin_y;
         let new_vertices = if let VertexAttributeValues::Float32x3(vertices) =

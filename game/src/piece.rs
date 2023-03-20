@@ -274,7 +274,7 @@ impl Piece {
         let sprite_height = piece_height + tab_height * (north_tab + south_tab) + 2 * border_size;
 
         let sprite_origin_x = border_size + piece_width / 2 + west_tab * tab_width;
-        let sprite_origin_y = border_size + piece_height / 2 + north_tab * tab_height;
+        let sprite_origin_y = border_size + piece_height / 2 + south_tab * tab_height;
 
         let mut crop = image::imageops::crop(
             image,

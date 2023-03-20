@@ -18,7 +18,7 @@ var<uniform> sprite_origin: vec2<f32>;
  */
 /*@group(1) @binding(3)*/
 /*var sides: u32;*/
-const sides: u32 = 15u;
+const sides: u32 = 0u;
 
 const directions: f32 = 8.0;
 const quality: f32 = 4.0;
@@ -42,6 +42,12 @@ fn fragment(
         }
     }
 
+    // uncomment to view uv coord (0.0, 0.0)
+
+    /*if abs(uv.x - 0.5) < 0.005 || abs(uv.y - 0.5) < 0.005 {*/
+    /*    return vec4(1.0, 0.0, 0.0, 1.0);*/
+    /*}*/
+
     // only blur near edges
     if summed_color.w >= 1.0 + directions * quality || summed_color.w == 0.0 {
         return color;
@@ -57,23 +63,23 @@ fn fragment(
 
     // uncomment to debug edges
 
-    if uv_prime.x < 0.0 {
-     if uv_prime.y > 0.0 {
-         // west
-         return vec4(1.0, 0.0, 0.0, 1.0);
-     } else if uv_prime.y < 0.0 {
-         // north
-         return vec4(0.0, 1.0, 0.0, 1.0);
-     }
-    } else {
-     if uv_prime.y > 0.0 {
-         // south
-         return vec4(0.0, 0.0, 1.0, 1.0);
-     } else if uv_prime.y < 0.0 {
-         // east
-         return vec4(1.0, 0.0, 1.0, 1.0);
-     }
-    }
+    /*if uv_prime.x < 0.0 {*/
+    /* if uv_prime.y > 0.0 {*/
+    /*     // west*/
+    /*     return vec4(1.0, 0.0, 0.0, 1.0);*/
+    /* } else if uv_prime.y < 0.0 {*/
+    /*     // north*/
+    /*     return vec4(0.0, 1.0, 0.0, 1.0);*/
+    /* }*/
+    /*} else {*/
+    /* if uv_prime.y > 0.0 {*/
+    /*     // south*/
+    /*     return vec4(0.0, 0.0, 1.0, 1.0);*/
+    /* } else if uv_prime.y < 0.0 {*/
+    /*     // east*/
+    /*     return vec4(1.0, 0.0, 1.0, 1.0);*/
+    /* }*/
+    /*}*/
 
     if uv_prime.x < 0.0 {
         if uv_prime.y > 0.0 && (sides & 8u) == 8u {
