@@ -128,7 +128,7 @@ fn click_piece(
                 ButtonState::Released => {
                     if held_piece.is_some() {
                         let piece = held_piece.unwrap();
-                        piece_move_events.send_batch(puzzle.piece_connection(&piece.index));
+                        piece_move_events.send_batch(puzzle.make_piece_connections(&piece.index));
                         held_piece = None;
                         commands.remove_resource::<HeldPiece>();
                         let mut window = window_query.single_mut();

@@ -177,6 +177,7 @@ impl Puzzle {
     }
 
     pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoveEvent> {
+        // TODO calculate delta and move whole group with it
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
         self.with_group_mut(group_index, |piece| {
@@ -198,7 +199,7 @@ impl Puzzle {
         events
     }
 
-    pub fn piece_connection(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
+    pub fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
         let possible_neighbors = [
             (index.0.saturating_add(1), index.1),
             (index.0.saturating_sub(1), index.1),
@@ -221,17 +222,33 @@ impl Puzzle {
         let closest = neighbors
             .into_iter()
             .map(|other| self.single_connection_check(index, &other))
-            .filter(|(_, distance, angle)| {
+            .filter(|(_, distance, angle, _)| {
                 *distance <= CONNECTION_DISTANCE && *angle <= CONNECTION_ANGLE
             })
             .inspect(|_| connection_count += 1)
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(closest) = closest {
-            let events = self.move_piece(index, closest.0);
+            let mut events = self.move_piece(index, closest.0);
+
+            let new_group_index = self
+                .with_piece(&closest.3, |piece| piece.group_index)
+                .unwrap();
+            let old_group_index = self
+                .with_piece_mut(index, |piece| {
+                    let old = piece.group_index;
+                    piece.group_index = new_group_index;
+                    old
+                })
+                .unwrap();
+            let recruits = self.groups[old_group_index].drain(..).collect::<Vec<_>>();
+            self.groups[new_group_index].extend(recruits);
+
+            if connection_count > 1 {
+                events.extend(self.make_piece_connections(index));
+            }
             return events;
         }
-
         Vec::new()
     }
 
@@ -239,7 +256,7 @@ impl Puzzle {
         &mut self,
         index: &PieceIndex,
         other: &PieceIndex,
-    ) -> (Transform, f32, f32) {
+    ) -> (Transform, f32, f32, PieceIndex) {
         let perfect = self
             .with_piece(other, |piece| {
                 // todo account for sprite size
@@ -263,6 +280,6 @@ impl Puzzle {
             })
             .unwrap();
 
-        (perfect, distance, angle)
+        (perfect, distance, angle, other.clone())
     }
 }
