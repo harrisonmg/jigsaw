@@ -1,4 +1,6 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle, utils::HashMap};
+use bevy::{
+    prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
+};
 
 use game::{Piece, PieceIndex};
 
@@ -44,10 +46,28 @@ impl PieceBundle {
             index: piece.index(),
             stack_pos,
         };
-        let mesh = meshes.add(Mesh::from(shape::Quad::new(Vec2::new(
-            sprite_width,
-            sprite_height,
-        ))));
+
+        let mut mesh = Mesh::from(shape::Quad::new(Vec2::new(sprite_width, sprite_height)));
+        let x_offset = 0.5 - sprite_origin_x;
+        let y_offset = 0.5 - sprite_origin_y;
+        let new_vertices = if let VertexAttributeValues::Float32x3(vertices) =
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
+        {
+            vertices
+                .iter()
+                .map(|vertex| {
+                    let mut points = vertex.clone();
+                    points[0] += x_offset;
+                    points[1] += y_offset;
+                    points
+                })
+                .collect::<Vec<[f32; 3]>>()
+        } else {
+            panic!();
+        };
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, new_vertices);
+
+        let mesh_handle = meshes.add(mesh);
         let material = materials.add(PieceMaterial {
             texture: image_assets.add(sprite.into()),
             sprite_origin: Vec2 {
@@ -58,7 +78,7 @@ impl PieceBundle {
         Self {
             piece: piece_component,
             mesh_bundle: MaterialMesh2dBundle {
-                mesh: mesh.into(),
+                mesh: mesh_handle.into(),
                 material,
                 transform: piece.transform(),
                 ..Default::default()
