@@ -64,21 +64,21 @@ fn fragment(
     // uncomment to debug edges
 
     /*if uv_prime.x < 0.0 {*/
-    /* if uv_prime.y > 0.0 {*/
-    /*     // west*/
-    /*     return vec4(1.0, 0.0, 0.0, 1.0);*/
-    /* } else if uv_prime.y < 0.0 {*/
-    /*     // north*/
-    /*     return vec4(0.0, 1.0, 0.0, 1.0);*/
-    /* }*/
+    /*    if uv_prime.y > 0.0 {*/
+    /*        // west*/
+    /*        return vec4(1.0, 0.0, 0.0, 1.0);*/
+    /*    } else if uv_prime.y < 0.0 {*/
+    /*        // north*/
+    /*        return vec4(0.0, 1.0, 0.0, 1.0);*/
+    /*    }*/
     /*} else {*/
-    /* if uv_prime.y > 0.0 {*/
-    /*     // south*/
-    /*     return vec4(0.0, 0.0, 1.0, 1.0);*/
-    /* } else if uv_prime.y < 0.0 {*/
-    /*     // east*/
-    /*     return vec4(1.0, 0.0, 1.0, 1.0);*/
-    /* }*/
+    /*    if uv_prime.y > 0.0 {*/
+    /*        // south*/
+    /*        return vec4(0.0, 0.0, 1.0, 1.0);*/
+    /*    } else if uv_prime.y < 0.0 {*/
+    /*        // east*/
+    /*        return vec4(1.0, 0.0, 1.0, 1.0);*/
+    /*    }*/
     /*}*/
 
     if uv_prime.x < 0.0 {

@@ -40,7 +40,7 @@ impl PieceBundle {
         let sprite_height = sprite.height() as f32;
 
         let sprite_origin_x = piece.sprite_origin_x() as f32 / sprite_width;
-        let sprite_origin_y = piece.sprite_origin_y() as f32 / sprite_height;
+        let sprite_origin_y = (sprite_height - (piece.sprite_origin_y() as f32)) / sprite_height;
 
         let piece_component = PieceComponent {
             index: piece.index(),

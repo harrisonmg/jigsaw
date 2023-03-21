@@ -1,4 +1,5 @@
 # TODO
+* side shader
 * frame and piece lock
 * outline at low z height
 * check wasm performance

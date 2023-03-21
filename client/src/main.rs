@@ -143,26 +143,23 @@ fn click_piece(
 fn drag_piece(
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut piece_move_events: EventWriter<PieceMoveEvent>,
-    keys: Res<Input<KeyCode>>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
     held_piece: Option<ResMut<HeldPiece>>,
     mut puzzle: ResMut<Puzzle>,
 ) {
     if let Some(mut held_piece) = held_piece {
-        if !keys.any_pressed([KeyCode::LShift, KeyCode::RShift]) {
-            let (camera, camera_transform) = camera_query.single();
-            for event in cursor_moved_events.iter() {
-                let cursor_position = camera
-                    .viewport_to_world_2d(camera_transform, event.position)
-                    .unwrap();
+        let (camera, camera_transform) = camera_query.single();
+        for event in cursor_moved_events.iter() {
+            let cursor_position = camera
+                .viewport_to_world_2d(camera_transform, event.position)
+                .unwrap();
 
-                let cursor_delta = cursor_position - held_piece.cursor_position;
-                piece_move_events.send_batch(puzzle.move_piece_rel(
-                    &held_piece.index,
-                    Transform::from_xyz(cursor_delta.x, cursor_delta.y, 0.0),
-                ));
-                held_piece.cursor_position = cursor_position;
-            }
+            let cursor_delta = cursor_position - held_piece.cursor_position;
+            piece_move_events.send_batch(puzzle.move_piece_rel(
+                &held_piece.index,
+                Transform::from_xyz(cursor_delta.x, cursor_delta.y, 0.0),
+            ));
+            held_piece.cursor_position = cursor_position;
         }
     }
 }
