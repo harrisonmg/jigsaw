@@ -1,9 +1,12 @@
 # TODO
-* rotation of pieces
+* frame and piece lock
 * outline at low z height
 * check wasm performance
-* transform and rebroadcast cursor move event for convenience
-* zoom centered on cursor pos
+* transform and rebroadcast cursor move event?
+    * server cursor position (cursor pos)
+    * move piece (cursor delta)
+    * proper zoom (cursor delta)
+    * pan camera (cursor pos)
 
 # architecture
 - server

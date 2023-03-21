@@ -189,7 +189,8 @@ impl Puzzle {
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
         self.with_group_mut(group_index, |piece| {
-            piece.transform = piece.transform.mul_transform(delta);
+            piece.transform.translation += delta.translation;
+            piece.transform.rotation *= delta.rotation;
             events.push(PieceMoveEvent::from_piece(piece));
         });
         events
