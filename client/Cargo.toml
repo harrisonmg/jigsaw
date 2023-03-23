@@ -9,6 +9,9 @@ game = { path = "../game" }
 
 anyhow = "1.0.69"
 image = "0.24.5"
+reqwest = "0.11.15"
+tokio = { version = "1", features = ["sync"] }
+futures-lite = "1.12.0"
 
 [dependencies.bevy]
 version = "0.10.0"
@@ -29,14 +32,14 @@ features = [
   "bevy_ui",
   "bevy_winit",
 
-  "dynamic_linking",
+  #"dynamic_linking",
 
   "filesystem_watcher",
-  "hdr",
-  "ktx2",
-  "png",
-  "tonemapping_luts",
-  "vorbis",
+  #"hdr",
+  #"ktx2",
+  #"png",
+  #"tonemapping_luts",
+  #"vorbis",
   "x11",
-  "zstd"
+  #"zstd"
 ]

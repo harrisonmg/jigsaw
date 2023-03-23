@@ -1,6 +1,6 @@
 # TODO
 * side shader
-* frame and piece lock
+* frame, piece lock, random starting pos
 * outline at low z height
 * check wasm performance
 * transform and rebroadcast cursor move event?

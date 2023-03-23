@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    path::Path,
+    fmt::Debug,
     sync::{Arc, RwLock},
 };
 
@@ -24,17 +24,14 @@ pub struct Puzzle {
     groups: Vec<Vec<Arc<RwLock<Piece>>>>,
 }
 
-impl Puzzle {
-    pub fn new(image_path: &Path, target_piece_count: u16) -> Self {
-        let file = std::fs::File::open(image_path).unwrap();
-        let reader = std::io::BufReader::new(file);
-        let mut image = image::io::Reader::new(reader)
-            .with_guessed_format()
-            .unwrap()
-            .decode()
-            .unwrap()
-            .to_rgba8();
+impl Debug for Puzzle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Puzzle").finish()
+    }
+}
 
+impl Puzzle {
+    pub fn new(mut image: RgbaImage, target_piece_count: u16) -> Self {
         // compute puzzle width and height based while trying to make pieces as square as possible
         let image_ratio = f64::from(image.width()) / f64::from(image.height());
         let puzzle_height = (f64::from(target_piece_count) / image_ratio).sqrt();

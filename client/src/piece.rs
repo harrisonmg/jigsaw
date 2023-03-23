@@ -4,7 +4,10 @@ use bevy::{
 
 use game::{Piece, PieceIndex};
 
-use crate::{better_quad::BetterQuad, material::PieceMaterial};
+use crate::{
+    better_quad::BetterQuad,
+    material::{PieceMaterial, PieceMaterialParams},
+};
 
 #[derive(Component)]
 pub struct PieceComponent {
@@ -75,11 +78,15 @@ impl PieceBundle {
 
         let mesh_handle = meshes.add(mesh);
         let material = materials.add(PieceMaterial {
-            texture: image_assets.add(sprite.into()),
-            sprite_origin: Vec2 {
-                x: sprite_origin_x,
-                y: sprite_origin_y,
+            params: PieceMaterialParams {
+                sprite_origin: Vec2 {
+                    x: sprite_origin_x,
+                    y: sprite_origin_y,
+                },
+                sides: 0, // TODO
+                ..default()
             },
+            texture: image_assets.add(sprite.into()),
         });
         Self {
             piece: piece_component,

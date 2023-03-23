@@ -9,38 +9,45 @@ use bevy::window::{CursorGrabMode, PrimaryWindow};
 use game::{PieceMoveEvent, Puzzle};
 
 mod better_quad;
+mod loader;
 mod material;
 mod piece;
+mod states;
 
+use loader::LoaderPlugin;
 use material::PieceMaterial;
 use piece::{HeldPiece, PieceBundle, PieceComponent, PieceMap, PieceStack};
+use states::AppState;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_system(bevy::window::close_on_esc)
+        //.add_plugin(LogDiagnosticsPlugin::default())
+        //.add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
-        .add_startup_system(setup)
+        .add_system(bevy::window::close_on_esc)
+        .add_state::<AppState>()
+        .add_plugin(LoaderPlugin)
         .add_event::<PieceMoveEvent>()
-        .add_system(click_piece)
-        .add_system(drag_piece)
-        .add_system(move_piece)
-        .add_system(sort_pieces)
-        .add_system(zoom)
+        .add_system(setup.run_if(in_state(AppState::Setup)))
+        .add_system(click_piece.run_if(in_state(AppState::Playing)))
+        .add_system(drag_piece.run_if(in_state(AppState::Playing)))
+        .add_system(move_piece.run_if(in_state(AppState::Playing)))
+        .add_system(sort_pieces.run_if(in_state(AppState::Playing)))
+        .add_system(zoom.run_if(in_state(AppState::Playing)))
         .run();
 }
 
 fn setup(
     mut commands: Commands,
+    puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PieceMaterial>>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    let puzzle = Puzzle::new(std::path::Path::new("../ymo.jpg"), 9);
     let mut piece_map = PieceMap(HashMap::new());
     let mut piece_stack = PieceStack(Vec::new());
 
@@ -54,9 +61,9 @@ fn setup(
         i += 1;
     });
 
-    commands.insert_resource(puzzle);
     commands.insert_resource(piece_map);
     commands.insert_resource(piece_stack);
+    next_state.set(AppState::Playing);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -118,7 +125,8 @@ fn click_piece(
                                 piece_stack.put_on_top(&mut piece, candidate_entity.unwrap());
 
                                 // grab cursor while holding piece to prevent moving far out of frame
-                                window.cursor.grab_mode = CursorGrabMode::Confined;
+                                // TODO this doesn't work as expected in wasm
+                                //window.cursor.grab_mode = CursorGrabMode::Confined;
 
                                 break;
                             }
@@ -132,7 +140,8 @@ fn click_piece(
                         held_piece = None;
                         commands.remove_resource::<HeldPiece>();
                         let mut window = window_query.single_mut();
-                        window.cursor.grab_mode = CursorGrabMode::None;
+                        // TODO
+                        //window.cursor.grab_mode = CursorGrabMode::None;
                     }
                 }
             }
