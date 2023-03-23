@@ -22,7 +22,7 @@ use states::AppState;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        //.add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(LogDiagnosticsPlugin::default())
         //.add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_systems(Update, bevy::window::close_on_esc)

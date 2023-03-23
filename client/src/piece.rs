@@ -83,12 +83,9 @@ impl PieceBundle {
         let material = materials.add(PieceMaterial {
             texture: image_assets.add(sprite.into()),
             params: PieceMaterialParams {
-                //sprite_origin: Vec2 {
-                //    x: sprite_origin_x,
-                //    y: sprite_origin_y,
-                //},
-                sprite_origin,
-                sides: 0, // TODO
+                sprite_origin_x: sprite_origin.x,
+                sprite_origin_y: sprite_origin.y,
+                // TODO sides
                 ..default()
             },
         });

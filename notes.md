@@ -1,8 +1,8 @@
 # TODO
+* tweak for wasm
 * side shader
-* frame, piece lock, random starting pos
+* frame, group lock (only at client level?), random starting pos
 * outline at low z height
-* check wasm performance
 * transform and rebroadcast cursor move event?
     * server cursor position (cursor pos)
     * move piece (cursor delta)

@@ -7,9 +7,10 @@ use bevy::{
 
 #[derive(Debug, Clone, Default, ShaderType)]
 pub struct PieceMaterialParams {
-    pub sprite_origin: Vec2,
+    pub sprite_origin_x: f32,
+    pub sprite_origin_y: f32,
     pub sides: u32,
-    pub _padding: u32,
+    pub padding: u32,
 }
 
 #[derive(AsBindGroup, TypeUuid, Debug, Clone)]
@@ -17,7 +18,6 @@ pub struct PieceMaterialParams {
 pub struct PieceMaterial {
     #[uniform(0)]
     pub params: PieceMaterialParams,
-
     #[texture(1)]
     #[sampler(2)]
     pub texture: Handle<Image>,
@@ -25,6 +25,7 @@ pub struct PieceMaterial {
 
 impl Material2d for PieceMaterial {
     fn fragment_shader() -> ShaderRef {
+        PieceMaterialParams::assert_uniform_compat();
         "shaders/piece.wgsl".into()
     }
 }
