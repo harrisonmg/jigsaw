@@ -25,16 +25,16 @@ fn main() {
         //.add_plugin(LogDiagnosticsPlugin::default())
         //.add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
-        .add_system(bevy::window::close_on_esc)
+        .add_systems(Update, bevy::window::close_on_esc)
         .add_state::<AppState>()
         .add_plugin(LoaderPlugin)
         .add_event::<PieceMoveEvent>()
-        .add_system(setup.run_if(in_state(AppState::Setup)))
-        .add_system(click_piece.run_if(in_state(AppState::Playing)))
-        .add_system(drag_piece.run_if(in_state(AppState::Playing)))
-        .add_system(move_piece.run_if(in_state(AppState::Playing)))
-        .add_system(sort_pieces.run_if(in_state(AppState::Playing)))
-        .add_system(zoom.run_if(in_state(AppState::Playing)))
+        .add_systems(Update, setup.run_if(in_state(AppState::Setup)))
+        .add_systems(Update, click_piece.run_if(in_state(AppState::Playing)))
+        .add_systems(Update, drag_piece.run_if(in_state(AppState::Playing)))
+        .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
+        .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)))
+        .add_systems(Update, zoom.run_if(in_state(AppState::Playing)))
         .run();
 }
 

@@ -5,26 +5,22 @@ use bevy::{
     sprite::Material2d,
 };
 
-#[derive(ShaderType, Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, ShaderType)]
 pub struct PieceMaterialParams {
     pub sprite_origin: Vec2,
     pub sides: u32,
-    pub _padding_1: u32,
-    pub _padding_2: u32,
-    pub _padding_3: u32,
-    pub _padding_4: u32,
-    pub _padding_5: u32,
+    pub _padding: u32,
 }
 
 #[derive(AsBindGroup, TypeUuid, Debug, Clone)]
-#[uuid = "77a244b3-9ff1-47e7-87de-97ffd4650eeb"]
+#[uuid = "77a244f3-9ff1-47e7-87de-97ffd4650eeb"]
 pub struct PieceMaterial {
-    #[texture(0)]
-    #[sampler(1)]
-    pub texture: Handle<Image>,
-
-    #[uniform(2)]
+    #[uniform(0)]
     pub params: PieceMaterialParams,
+
+    #[texture(1)]
+    #[sampler(2)]
+    pub texture: Handle<Image>,
 }
 
 impl Material2d for PieceMaterial {

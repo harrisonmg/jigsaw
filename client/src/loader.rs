@@ -11,8 +11,8 @@ pub struct LoaderPlugin;
 
 impl Plugin for LoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(spawn_load_task)
-            .add_system(handle_load_task.run_if(in_state(AppState::Loading)));
+        app.add_systems(Startup, spawn_load_task)
+            .add_systems(Update, handle_load_task.run_if(in_state(AppState::Loading)));
     }
 }
 

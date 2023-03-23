@@ -1,13 +1,7 @@
 #import bevy_sprite::mesh2d_view_bindings
 
-@group(1) @binding(0)
-var texture: texture_2d<f32>;
-
-@group(1) @binding(1)
-var texture_sampler: sampler;
-
-struct Params {
-   params.sprite_origin: vec2<f32>,
+struct PieceParams {
+   sprite_origin: vec2<f32>,
 
    // sides to blur
    // bitmask:
@@ -17,62 +11,17 @@ struct Params {
    // 0b1000 = west
    sides: u32,
 
-   _padding_1: u32,
-   _padding_2: u32,
-   _padding_3: u32,
-   _padding_4: u32,
-   _padding_5: u32,
-   _padding_6: u32,
-   _padding_7: u32,
-   _padding_8: u32,
-   _padding_9: u32,
-   _padding_10: u32,
-   _padding_11: u32,
-   _padding_12: u32,
-   _padding_13: u32,
-   _padding_14: u32,
-   _padding_15: u32,
-   _padding_16: u32,
-   _padding_17: u32,
-   _padding_18: u32,
-   _padding_19: u32,
-   _padding_20: u32,
-   _padding_21: u32,
-   _padding_22: u32,
-   _padding_23: u32,
-   _padding_24: u32,
-   _padding_25: u32,
-   _padding_26: u32,
-   _padding_27: u32,
-   _padding_28: u32,
-   _padding_29: u32,
-   _padding_30: u32,
-   _padding_31: u32,
-   _padding_32: u32,
-   _padding_33: u32,
-   _padding_34: u32,
-   _padding_35: u32,
-   _padding_36: u32,
-   _padding_37: u32,
-   _padding_38: u32,
-   _padding_39: u32,
-   _padding_40: u32,
-   _padding_41: u32,
-   _padding_42: u32,
-   _padding_43: u32,
-   _padding_44: u32,
-   _padding_45: u32,
+   _padding: u32,
 }
 
+@group(1) @binding(0)
+var<uniform> params: PieceParams;
+
+@group(1) @binding(1)
+var texture: texture_2d<f32>;
+
 @group(1) @binding(2)
-var<uniform> params: Param;
-
-
-const directions: f32 = 8.0;
-const quality: f32 = 4.0;
-const size: f32 = 1.0;
-
-const pi2 = 6.28318530718;
+var texture_sampler: sampler;
 
 @fragment
 fn fragment(
@@ -80,6 +29,13 @@ fn fragment(
 ) -> @location(0) vec4<f32> {
     return vec4(1.0, 0.0, 0.0, 0.0);
 }
+
+
+/*const directions: f32 = 8.0;*/
+/*const quality: f32 = 4.0;*/
+/*const size: f32 = 1.0;*/
+
+/*const pi2 = 6.28318530718;*/
 
 /*@fragment*/
 /*fn fragment(*/

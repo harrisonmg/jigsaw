@@ -42,23 +42,26 @@ impl PieceBundle {
         let sprite_width = sprite.width() as f32;
         let sprite_height = sprite.height() as f32;
 
-        let sprite_origin_x = piece.sprite_origin_x() as f32 / sprite_width;
-        let sprite_origin_y = (sprite_height - (piece.sprite_origin_y() as f32)) / sprite_height;
-
         let piece_component = PieceComponent {
             index: piece.index(),
             stack_pos,
         };
 
+        let mut sprite_origin = Vec2::new(
+            piece.sprite_origin_x() as f32,
+            piece.sprite_origin_y() as f32,
+        );
+
         let mut mesh = Mesh::from(BetterQuad::new(
             Vec2::new(sprite_width, sprite_height),
-            Vec2::new(
-                piece.sprite_origin_x() as f32,
-                piece.sprite_origin_y() as f32,
-            ),
+            sprite_origin,
         ));
-        let x_offset = 0.5 - sprite_origin_x;
-        let y_offset = 0.5 - sprite_origin_y;
+
+        sprite_origin.x /= sprite_width;
+        sprite_origin.y = (sprite_height - sprite_origin.y) / sprite_height;
+
+        let x_offset = 0.5 - sprite_origin.x;
+        let y_offset = 0.5 - sprite_origin.y;
         let new_vertices = if let VertexAttributeValues::Float32x3(vertices) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
         {
@@ -78,15 +81,16 @@ impl PieceBundle {
 
         let mesh_handle = meshes.add(mesh);
         let material = materials.add(PieceMaterial {
+            texture: image_assets.add(sprite.into()),
             params: PieceMaterialParams {
-                sprite_origin: Vec2 {
-                    x: sprite_origin_x,
-                    y: sprite_origin_y,
-                },
+                //sprite_origin: Vec2 {
+                //    x: sprite_origin_x,
+                //    y: sprite_origin_y,
+                //},
+                sprite_origin,
                 sides: 0, // TODO
                 ..default()
             },
-            texture: image_assets.add(sprite.into()),
         });
         Self {
             piece: piece_component,
