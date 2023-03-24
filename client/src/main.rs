@@ -6,6 +6,7 @@ use bevy::sprite::Material2dPlugin;
 use bevy::utils::HashMap;
 
 use bevy::window::{CursorGrabMode, PrimaryWindow};
+use bevy_web_fullscreen::FullViewportPlugin;
 use game::{PieceMoveEvent, Puzzle};
 
 mod better_quad;
@@ -24,6 +25,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(LogDiagnosticsPlugin::default())
         //.add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(FullViewportPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_systems(Update, bevy::window::close_on_esc)
         .add_state::<AppState>()
@@ -255,7 +257,7 @@ fn zoom(
     let mut projection = projection_query.get_single_mut().unwrap();
     let mut zoom_scale = projection.scale.ln();
     for event in scroll_events.iter() {
-        zoom_scale -= event.y / 10.0;
+        zoom_scale -= event.y / 300.0;
     }
     projection.scale = zoom_scale.exp();
 }
