@@ -12,36 +12,24 @@ image = "0.24.5"
 reqwest = "0.11.15"
 tokio = { version = "1", features = ["sync"] }
 futures-lite = "1.12.0"
-web-sys = { version = "0.3.61", features = ["Window"]}
 gloo-events = "0.1.2"
+wasm-bindgen = "0.2.84"
+
+[dependencies.web-sys]
+version = "0.3.61"
+features = [
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "HtmlCollection",
+  "Window",
+]
 
 [dependencies.bevy]
 git = "https://github.com/bevyengine/bevy.git"
 features = [
-  #"android_shared_stdcxx",
-  "animation",
-  #"bevy_animation",
   "bevy_asset",
-  #"bevy_audio",
   "bevy_core_pipeline",
-  #"bevy_gilrs",
-  #"bevy_gltf",
-  #"bevy_pbr",
   "bevy_render",
-  #"bevy_scene",
   "bevy_sprite",
-  "bevy_text",
-  "bevy_ui",
-  "bevy_winit",
-
-  #"dynamic_linking",
-
-  "filesystem_watcher",
-  #"hdr",
-  #"ktx2",
-  #"png",
-  #"tonemapping_luts",
-  #"vorbis",
-  "x11",
-  #"zstd"
 ]

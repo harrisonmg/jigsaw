@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use bevy::transform::components::Transform;
 use image::Pixel;
 use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
@@ -8,10 +7,11 @@ use usvg::NodeExt;
 
 use crate::Puzzle;
 
-const TAB_LENGTH_RATIO: f64 = 0.30;
-const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
-const TAB_INNER_SIZE_RATIO: f64 = 0.22;
-pub(crate) const BORDER_SIZE_FRACTION: u32 = 10;
+const TAB_LENGTH_PERCENT: f64 = 0.30;
+const TAB_OUTER_SIZE_PERCENT: f64 = 0.36;
+const TAB_INNER_SIZE_PERCENT: f64 = 0.22;
+const PIECE_OVERSIZE_PERCENT: f64 = 0.05;
+pub(crate) const BORDER_SIZE_DENOM: u32 = 10;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct PieceIndex(pub u8, pub u8);
@@ -208,9 +208,9 @@ pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
     sprite: crate::image::Image,
-    sprite_origin_x: u32,
-    sprite_origin_y: u32,
-    pub(crate) transform: Transform,
+    sprite_origin_x: f64,
+    sprite_origin_y: f64,
+    pub(crate) transform: bevy::prelude::Transform,
     pub(crate) group_index: usize,
 }
 
@@ -239,15 +239,15 @@ impl Piece {
             sprite: sprite.into(),
             sprite_origin_x,
             sprite_origin_y,
-            transform: Transform::IDENTITY,
+            transform: bevy::prelude::Transform::IDENTITY,
             group_index,
         }
     }
 
     fn tab_size(piece_width: u32, piece_height: u32) -> (u32, u32) {
         (
-            (TAB_LENGTH_RATIO * f64::from(piece_width)) as u32,
-            (TAB_LENGTH_RATIO * f64::from(piece_height)) as u32,
+            (TAB_LENGTH_PERCENT * f64::from(piece_width)) as u32,
+            (TAB_LENGTH_PERCENT * f64::from(piece_height)) as u32,
         )
     }
 
@@ -264,7 +264,7 @@ impl Piece {
         border_size: u32,
         image: &mut image::RgbaImage,
         kind: PieceKind,
-    ) -> (image::RgbaImage, u32, u32) {
+    ) -> (image::RgbaImage, f64, f64) {
         let PieceIndex(row, col) = index;
         let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
         let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
@@ -273,8 +273,10 @@ impl Piece {
         let sprite_width = piece_width + tab_width * (east_tab + west_tab) + 2 * border_size;
         let sprite_height = piece_height + tab_height * (north_tab + south_tab) + 2 * border_size;
 
-        let sprite_origin_x = border_size + piece_width / 2 + west_tab * tab_width;
-        let sprite_origin_y = border_size + piece_height / 2 + south_tab * tab_height;
+        let mut sprite_origin_x: f64 =
+            (border_size + piece_width / 2 + west_tab * tab_width).into();
+        let mut sprite_origin_y: f64 =
+            (border_size + piece_height / 2 + south_tab * tab_height).into();
 
         let mut crop = image::imageops::crop(
             image,
@@ -314,12 +316,12 @@ impl Piece {
         let tab_width: f64 = tab_width.into();
         let tab_height: f64 = tab_height.into();
 
-        let mut ns_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_width).round();
+        let mut ns_tab_inner_size: f64 = (TAB_INNER_SIZE_PERCENT * piece_width).round();
         if ns_tab_inner_size / 2.0 != 0.0 {
             ns_tab_inner_size -= 1.0;
         }
 
-        let mut ns_tab_outer_size: f64 = (TAB_OUTER_SIZE_RATIO * piece_width).round();
+        let mut ns_tab_outer_size: f64 = (TAB_OUTER_SIZE_PERCENT * piece_width).round();
         if ns_tab_outer_size / 2.0 != 0.0 {
             ns_tab_outer_size -= 1.0;
         }
@@ -327,12 +329,12 @@ impl Piece {
         let ns_corner_seg_size = (piece_width - ns_tab_inner_size) / 2.0;
         let ns_bulge_half_size = (ns_tab_outer_size - ns_tab_inner_size) / 2.0;
 
-        let mut ew_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_height).round();
+        let mut ew_tab_inner_size: f64 = (TAB_INNER_SIZE_PERCENT * piece_height).round();
         if ew_tab_inner_size / 2.0 != 0.0 {
             ew_tab_inner_size -= 1.0;
         }
 
-        let mut ew_tab_outer_size: f64 = (TAB_OUTER_SIZE_RATIO * piece_height).round();
+        let mut ew_tab_outer_size: f64 = (TAB_OUTER_SIZE_PERCENT * piece_height).round();
         if ew_tab_outer_size / 2.0 != 0.0 {
             ew_tab_outer_size -= 1.0;
         }
@@ -408,6 +410,21 @@ impl Piece {
 
         rel_line(0.0, -ew_corner_seg_size);
 
+        path_data.transform(usvg::Transform::new_translate(
+            -sprite_origin_x,
+            -sprite_origin_y,
+        ));
+        path_data.transform(usvg::Transform::new_scale(
+            1.0 + PIECE_OVERSIZE_PERCENT,
+            1.0 + PIECE_OVERSIZE_PERCENT,
+        ));
+        sprite_origin_x *= 1.0 + PIECE_OVERSIZE_PERCENT / 2.0;
+        sprite_origin_y *= 1.0 + PIECE_OVERSIZE_PERCENT / 2.0;
+        path_data.transform(usvg::Transform::new_translate(
+            sprite_origin_x,
+            sprite_origin_y,
+        ));
+
         tree.root.append_kind(usvg::NodeKind::Path(usvg::Path {
             fill: Some(usvg::Fill::default()), // black
             data: Rc::new(path_data),
@@ -442,15 +459,15 @@ impl Piece {
         self.sprite.clone()
     }
 
-    pub fn sprite_origin_x(&self) -> u32 {
+    pub fn sprite_origin_x(&self) -> f64 {
         self.sprite_origin_x
     }
 
-    pub fn sprite_origin_y(&self) -> u32 {
+    pub fn sprite_origin_y(&self) -> f64 {
         self.sprite_origin_y
     }
 
-    pub fn transform(&self) -> Transform {
+    pub fn transform(&self) -> bevy::prelude::Transform {
         self.transform
     }
 }

@@ -28,12 +28,8 @@ impl Plugin for FullViewportPlugin {
 }
 
 fn get_viewport_size() -> (f32, f32) {
-    let web_window = web_sys::window().expect("could not get window");
-    let document_element = web_window
-        .document()
-        .expect("could not get document")
-        .document_element()
-        .expect("could not get document element");
+    let window = web_sys::window().unwrap();
+    let document_element = window.document().unwrap().document_element().unwrap();
 
     let width = document_element.client_width();
     let height = document_element.client_height();
@@ -42,7 +38,7 @@ fn get_viewport_size() -> (f32, f32) {
 }
 
 fn setup_viewport_resize_system(resize_sender: Res<OnResizeSender>) {
-    let web_window = web_sys::window().expect("could not get window");
+    let web_window = web_sys::window().unwrap();
     let local_sender = resize_sender.0.lock().unwrap().clone();
 
     local_sender.send(()).unwrap();

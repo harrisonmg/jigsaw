@@ -115,7 +115,4 @@ impl PieceStack {
 }
 
 #[derive(Resource)]
-pub struct HeldPiece {
-    pub index: PieceIndex,
-    pub cursor_position: Vec2,
-}
+pub struct HeldPiece(pub PieceIndex);

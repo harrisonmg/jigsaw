@@ -1,25 +1,30 @@
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy::input::mouse::{MouseButtonInput, MouseMotion, MouseWheel};
+use bevy::diagnostic::LogDiagnosticsPlugin;
+use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::utils::HashMap;
 
-use bevy::window::{CursorGrabMode, PrimaryWindow};
-use game::{PieceMoveEvent, Puzzle};
+use game::{PieceMoved, Puzzle};
 
 mod better_quad;
+mod cursor;
+mod disable_context_menu;
 mod loader;
 mod material;
 mod piece;
 mod states;
 mod viewport;
 
+use cursor::{WorldCursorMoved, WorldCursorPlugin, WorldCursorPosition};
+use disable_context_menu::DisableContextMenuPlugin;
 use loader::LoaderPlugin;
 use material::PieceMaterial;
 use piece::{HeldPiece, PieceBundle, PieceComponent, PieceMap, PieceStack};
 use states::AppState;
 use viewport::FullViewportPlugin;
+
+const MAX_PIECE_HEIGHT: f32 = 900.0;
 
 fn main() {
     App::new()
@@ -27,17 +32,18 @@ fn main() {
         .add_plugin(LogDiagnosticsPlugin::default())
         //.add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(FullViewportPlugin)
+        .add_plugin(DisableContextMenuPlugin)
+        .add_plugin(WorldCursorPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_systems(Update, bevy::window::close_on_esc)
         .add_state::<AppState>()
         .add_plugin(LoaderPlugin)
-        .add_event::<PieceMoveEvent>()
+        .add_event::<PieceMoved>()
         .add_systems(Update, setup.run_if(in_state(AppState::Setup)))
         .add_systems(Update, click_piece.run_if(in_state(AppState::Playing)))
         .add_systems(Update, drag_piece.run_if(in_state(AppState::Playing)))
         .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
         .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)))
-        .add_systems(Update, zoom.run_if(in_state(AppState::Playing)))
         .run();
 }
 
@@ -72,10 +78,9 @@ fn setup(
 #[allow(clippy::too_many_arguments)]
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
-    mut piece_move_events: EventWriter<PieceMoveEvent>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    mut window_query: Query<&mut Window, With<PrimaryWindow>>,
+    mut piece_move_events: EventWriter<PieceMoved>,
     mut piece_query: Query<(&GlobalTransform, &mut PieceComponent, Entity)>,
+    world_cursor_pos: Res<WorldCursorPosition>,
     mut puzzle: ResMut<Puzzle>,
     mut held_piece: Option<ResMut<HeldPiece>>,
     mut piece_stack: ResMut<PieceStack>,
@@ -86,65 +91,44 @@ fn click_piece(
             match event.state {
                 ButtonState::Pressed => {
                     if held_piece.is_none() {
-                        let (camera, camera_transform) = camera_query.single();
-                        let mut window = window_query.single_mut();
-                        if let Some(click_pos) = window
-                            .cursor_position()
-                            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-                            .map(|ray| ray.origin)
-                        {
-                            // prioritize highest z value (piece on top)
-                            let mut candidate_entity = None;
-                            let mut candidate_z = f32::NEG_INFINITY;
+                        // prioritize highest z value (piece on top)
+                        let mut candidate_entity = None;
+                        let mut candidate_z = f32::NEG_INFINITY;
 
-                            for (piece_transform, _, piece_entity) in piece_query.iter() {
-                                let inverse_transform = Transform::from_matrix(
-                                    piece_transform.compute_matrix().inverse(),
-                                );
-                                let relative_click_pos =
-                                    inverse_transform.transform_point(click_pos);
+                        for (piece_transform, _, piece_entity) in piece_query.iter() {
+                            let inverse_transform =
+                                Transform::from_matrix(piece_transform.compute_matrix().inverse());
+                            let relative_click_pos =
+                                inverse_transform.transform_point(world_cursor_pos.0.extend(0.0));
 
-                                let half_width = puzzle.piece_width() as f32 / 2.0;
-                                let half_height = puzzle.piece_height() as f32 / 2.0;
+                            let half_width = puzzle.piece_width() as f32 / 2.0;
+                            let half_height = puzzle.piece_height() as f32 / 2.0;
 
-                                let piece_z = piece_transform.translation().z;
+                            let piece_z = piece_transform.translation().z;
 
-                                if relative_click_pos.x.abs() <= half_width
-                                    && relative_click_pos.y.abs() <= half_height
-                                    && piece_z > candidate_z
-                                {
-                                    candidate_entity = Some(piece_entity);
-                                    candidate_z = piece_z;
-                                }
+                            if relative_click_pos.x.abs() <= half_width
+                                && relative_click_pos.y.abs() <= half_height
+                                && piece_z > candidate_z
+                            {
+                                candidate_entity = Some(piece_entity);
+                                candidate_z = piece_z;
                             }
+                        }
 
-                            if let Some(piece_entity) = candidate_entity {
-                                let (_, mut piece, _) = piece_query.get_mut(piece_entity).unwrap();
-                                commands.insert_resource(HeldPiece {
-                                    index: piece.index(),
-                                    cursor_position: click_pos.truncate(),
-                                });
-
-                                piece_stack.put_on_top(&mut piece, candidate_entity.unwrap());
-
-                                // grab cursor while holding piece to prevent moving far out of frame
-                                // TODO this doesn't work as expected in wasm
-                                //window.cursor.grab_mode = CursorGrabMode::Confined;
-
-                                break;
-                            }
+                        if let Some(piece_entity) = candidate_entity {
+                            let (_, mut piece, _) = piece_query.get_mut(piece_entity).unwrap();
+                            commands.insert_resource(HeldPiece(piece.index()));
+                            piece_stack.put_on_top(&mut piece, candidate_entity.unwrap());
+                            break;
                         }
                     }
                 }
                 ButtonState::Released => {
                     if held_piece.is_some() {
-                        let piece = held_piece.unwrap();
-                        piece_move_events.send_batch(puzzle.make_group_connections(&piece.index));
+                        let piece_index = held_piece.unwrap().0;
+                        piece_move_events.send_batch(puzzle.make_group_connections(&piece_index));
                         held_piece = None;
                         commands.remove_resource::<HeldPiece>();
-                        let mut window = window_query.single_mut();
-                        // TODO
-                        //window.cursor.grab_mode = CursorGrabMode::None;
                     }
                 }
             }
@@ -153,70 +137,28 @@ fn click_piece(
 }
 
 fn drag_piece(
-    mut cursor_moved_events: EventReader<CursorMoved>,
-    mut piece_move_events: EventWriter<PieceMoveEvent>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
+    mut world_cursor_moved_events: EventReader<WorldCursorMoved>,
+    mut piece_moved_events: EventWriter<PieceMoved>,
     held_piece: Option<ResMut<HeldPiece>>,
     mut puzzle: ResMut<Puzzle>,
 ) {
-    if let Some(mut held_piece) = held_piece {
-        let (camera, camera_transform) = camera_query.single();
-        for event in cursor_moved_events.iter() {
-            let cursor_position = camera
-                .viewport_to_world_2d(camera_transform, event.position)
-                .unwrap();
-
-            let cursor_delta = cursor_position - held_piece.cursor_position;
-            piece_move_events.send_batch(puzzle.move_piece_rel(
-                &held_piece.index,
-                Transform::from_xyz(cursor_delta.x, cursor_delta.y, 0.0),
+    if let Some(HeldPiece(piece_index)) = held_piece.as_deref() {
+        for event in world_cursor_moved_events.iter() {
+            piece_moved_events.send_batch(puzzle.move_piece_rel(
+                &piece_index,
+                Transform::from_translation(event.0.extend(0.0)),
             ));
-            held_piece.cursor_position = cursor_position;
-        }
-    }
-}
-
-#[allow(unused)]
-fn spin_piece(
-    mut mouse_motion_events: EventReader<MouseMotion>,
-    mut piece_move_events: EventWriter<PieceMoveEvent>,
-    keys: Res<Input<KeyCode>>,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    held_piece: Option<ResMut<HeldPiece>>,
-    mut puzzle: ResMut<Puzzle>,
-) {
-    if let Some(mut held_piece) = held_piece {
-        if keys.any_pressed([KeyCode::LShift, KeyCode::RShift]) {
-            for event in mouse_motion_events.iter() {
-                // This doesn't work for some reason
-                let angle = event.delta.y / 10000.0;
-                piece_move_events.send_batch(puzzle.move_piece_rel(
-                    &held_piece.index,
-                    Transform::from_rotation(Quat::from_rotation_z(angle)),
-                ));
-
-                let (camera, camera_transform) = camera_query.single();
-                if let Some(cursor_position) = window_query
-                    .get_single()
-                    .unwrap()
-                    .cursor_position()
-                    .and_then(|cursor| camera.viewport_to_world_2d(camera_transform, cursor))
-                {
-                    held_piece.cursor_position = cursor_position;
-                }
-            }
         }
     }
 }
 
 fn move_piece(
-    mut piece_move_events: EventReader<PieceMoveEvent>,
+    mut piece_moved_events: EventReader<PieceMoved>,
     mut piece_query: Query<(&mut Transform, &mut PieceComponent)>,
     piece_map: Res<PieceMap>,
     mut piece_stack: ResMut<PieceStack>,
 ) {
-    for event in piece_move_events.iter() {
+    for event in piece_moved_events.iter() {
         let piece_entity = *piece_map.0.get(&event.index).unwrap();
         let (mut transform, mut piece) = piece_query.get_mut(piece_entity).unwrap();
         transform.translation.x = event.x;
@@ -231,8 +173,7 @@ fn sort_pieces(
     mut piece_stack: ResMut<PieceStack>,
 ) {
     let piece_count = piece_query.iter().len();
-    let highest_piece_z = 900.0;
-    let z_step = highest_piece_z / piece_count as f32;
+    let z_step = MAX_PIECE_HEIGHT / piece_count as f32;
 
     let mut stack_offset = 0;
     let mut i = 0;
@@ -249,16 +190,4 @@ fn sort_pieces(
             false
         }
     });
-}
-
-fn zoom(
-    mut scroll_events: EventReader<MouseWheel>,
-    mut projection_query: Query<&mut OrthographicProjection>,
-) {
-    let mut projection = projection_query.get_single_mut().unwrap();
-    let mut zoom_scale = projection.scale.ln();
-    for event in scroll_events.iter() {
-        zoom_scale -= event.y / 300.0;
-    }
-    projection.scale = zoom_scale.exp();
 }

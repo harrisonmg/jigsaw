@@ -8,9 +8,9 @@ use bevy::transform::components::Transform;
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
-use crate::{Piece, PieceIndex, PieceMoveEvent, BORDER_SIZE_FRACTION};
+use crate::{Piece, PieceIndex, PieceMoved, BORDER_SIZE_DENOM};
 
-const CONNECTION_DISTANCE: f32 = 30.0;
+const CONNECTION_DISTANCE: f32 = 30.0; // TODO scale to piece size
 const CONNECTION_ANGLE: f32 = 0.5; // rad
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
@@ -61,7 +61,7 @@ impl Puzzle {
         )
         .to_image();
 
-        let mut border_size = piece_width.min(piece_height) / BORDER_SIZE_FRACTION;
+        let mut border_size = piece_width.min(piece_height) / BORDER_SIZE_DENOM;
         if border_size % 2 == 1 {
             border_size -= 1;
         }
@@ -173,7 +173,7 @@ impl Puzzle {
         self.piece_height
     }
 
-    pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoveEvent> {
+    pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoved> {
         // TODO calculate delta and move whole group with it
         let piece_transform = self.with_piece(index, |piece| piece.transform).unwrap();
         let inverse_piece_transform =
@@ -182,18 +182,18 @@ impl Puzzle {
         self.move_piece_rel(index, delta)
     }
 
-    pub fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoveEvent> {
+    pub fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoved> {
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
         self.with_group_mut(group_index, |piece| {
             piece.transform.translation += delta.translation;
             piece.transform.rotation *= delta.rotation;
-            events.push(PieceMoveEvent::from_piece(piece));
+            events.push(PieceMoved::from_piece(piece));
         });
         events
     }
 
-    pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
+    pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
         let mut events = Vec::new();
         let mut piece_indices = Vec::new();
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
@@ -204,7 +204,7 @@ impl Puzzle {
         events
     }
 
-    fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoveEvent> {
+    fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
         let possible_neighbors = [
             (index.0.saturating_add(1), index.1),
             (index.0.saturating_sub(1), index.1),
@@ -264,7 +264,6 @@ impl Puzzle {
     ) -> (Transform, f32, f32, PieceIndex) {
         let perfect = self
             .with_piece(other, |piece| {
-                // todo account for sprite size
                 let x = piece.transform.translation.x
                     + (index.1 as f32 - other.1 as f32) * self.piece_width as f32;
                 let y = piece.transform.translation.y
@@ -279,7 +278,7 @@ impl Puzzle {
                     perfect
                         .translation
                         .truncate()
-                        .distance(piece.transform.translation.truncate()), // TODO scale to piece size
+                        .distance(piece.transform.translation.truncate()),
                     perfect.rotation.angle_between(piece.transform.rotation),
                 )
             })

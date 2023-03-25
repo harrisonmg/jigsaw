@@ -1,7 +1,7 @@
 use crate::{Piece, PieceIndex};
 
 #[derive(Debug)]
-pub struct PieceMoveEvent {
+pub struct PieceMoved {
     pub index: PieceIndex,
 
     // global absolute pose
@@ -10,7 +10,7 @@ pub struct PieceMoveEvent {
     pub rotation: f32, // radians around Z axis
 }
 
-impl PieceMoveEvent {
+impl PieceMoved {
     pub(crate) fn from_piece(value: &Piece) -> Self {
         Self {
             index: value.index(),

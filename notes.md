@@ -1,13 +1,12 @@
 # TODO
+* transform and rebroadcast cursor move event?
+    * pan camera (cursor delta)
+    * proper zoom (cursor pos)
 * cut pieces slightly oversized to fix tiny gaps when connected errors
 * side shader
 * frame, group lock (only at client level?), random starting pos
 * outline at low z height
-* transform and rebroadcast cursor move event?
-    * server cursor position (cursor pos)
-    * move piece (cursor delta)
-    * proper zoom (cursor delta)
-    * pan camera (cursor pos)
+* tween?
 
 # architecture
 - server
