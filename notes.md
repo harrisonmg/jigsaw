@@ -1,5 +1,5 @@
 # TODO
-* tweak for wasm
+* cut pieces slightly oversized to fix tiny gaps when connected errors
 * side shader
 * frame, group lock (only at client level?), random starting pos
 * outline at low z height

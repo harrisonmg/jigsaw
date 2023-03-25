@@ -1,5 +1,3 @@
-/*#import bevy_sprite::mesh2d_view_bindings*/
-
 struct PieceParams {
   sprite_origin_x: f32,
   sprite_origin_y: f32,

@@ -6,7 +6,6 @@ use bevy::sprite::Material2dPlugin;
 use bevy::utils::HashMap;
 
 use bevy::window::{CursorGrabMode, PrimaryWindow};
-use bevy_web_fullscreen::FullViewportPlugin;
 use game::{PieceMoveEvent, Puzzle};
 
 mod better_quad;
@@ -14,11 +13,13 @@ mod loader;
 mod material;
 mod piece;
 mod states;
+mod viewport;
 
 use loader::LoaderPlugin;
 use material::PieceMaterial;
 use piece::{HeldPiece, PieceBundle, PieceComponent, PieceMap, PieceStack};
 use states::AppState;
+use viewport::FullViewportPlugin;
 
 fn main() {
     App::new()
