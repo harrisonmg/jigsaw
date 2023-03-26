@@ -48,7 +48,13 @@ fn fragment(
    // uncomment to view uv coord (0.0, 0.0)
 
    // if abs(uv.x - 0.5) < 0.005 || abs(uv.y - 0.5) < 0.005 {
-   //    return vec4(1.0, 0.0, 0.0, 1.0);
+   //   return vec4(1.0, 0.0, 0.0, 1.0);
+   // }
+
+   // uncomment to view sprite origin
+
+   // if abs(uv.x - params.sprite_origin_x) < 0.005 || abs(uv.y - params.sprite_origin_y) < 0.005 {
+   //   return vec4(1.0, 0.0, 0.0, 1.0);
    // }
 
    // only blur near edges

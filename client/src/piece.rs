@@ -2,12 +2,26 @@ use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
 
-use game::{Piece, PieceIndex};
+use game::{Piece, PieceIndex, PieceMoved, Puzzle};
 
 use crate::{
     better_quad::BetterQuad,
     material::{PieceMaterial, PieceMaterialParams},
+    states::AppState,
 };
+
+const MAX_PIECE_HEIGHT: f32 = 900.0;
+
+pub struct PiecePlugin;
+
+impl Plugin for PiecePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<PieceMoved>()
+            .add_systems(OnEnter(AppState::Setup), piece_setup)
+            .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
+            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
+    }
+}
 
 #[derive(Component)]
 pub struct PieceComponent {
@@ -85,7 +99,8 @@ impl PieceBundle {
             params: PieceMaterialParams {
                 sprite_origin_x: sprite_origin.x,
                 sprite_origin_y: sprite_origin.y,
-                // TODO sides
+                // TODO
+                sides: 15,
                 ..default()
             },
         });
@@ -116,3 +131,69 @@ impl PieceStack {
 
 #[derive(Resource)]
 pub struct HeldPiece(pub PieceIndex);
+
+fn piece_setup(
+    mut commands: Commands,
+    puzzle: Res<Puzzle>,
+    mut image_assets: ResMut<Assets<Image>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<PieceMaterial>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    let mut piece_map = PieceMap(HashMap::new());
+    let mut piece_stack = PieceStack(Vec::new());
+
+    let mut i = 0;
+    puzzle.with_pieces(|piece| {
+        let piece_bundle =
+            PieceBundle::new(piece, i, &mut image_assets, &mut meshes, &mut materials);
+        let piece_entity = commands.spawn(piece_bundle).id();
+        piece_map.0.insert(piece.index(), piece_entity);
+        piece_stack.0.push(piece_entity);
+        i += 1;
+    });
+
+    commands.insert_resource(piece_map);
+    commands.insert_resource(piece_stack);
+    next_state.set(AppState::Playing);
+}
+
+fn move_piece(
+    mut piece_moved_events: EventReader<PieceMoved>,
+    mut piece_query: Query<(&mut Transform, &mut PieceComponent)>,
+    piece_map: Res<PieceMap>,
+    mut piece_stack: ResMut<PieceStack>,
+) {
+    for event in piece_moved_events.iter() {
+        let piece_entity = *piece_map.0.get(&event.index).unwrap();
+        let (mut transform, mut piece) = piece_query.get_mut(piece_entity).unwrap();
+        transform.translation.x = event.x;
+        transform.translation.y = event.y;
+        transform.rotation = Quat::from_rotation_z(event.rotation);
+        piece_stack.put_on_top(&mut piece, piece_entity);
+    }
+}
+
+fn sort_pieces(
+    mut piece_query: Query<(&mut Transform, &mut PieceComponent), With<PieceComponent>>,
+    mut piece_stack: ResMut<PieceStack>,
+) {
+    let piece_count = piece_query.iter().len();
+    let z_step = MAX_PIECE_HEIGHT / piece_count as f32;
+
+    let mut stack_offset = 0;
+    let mut i = 0;
+    piece_stack.0.retain(|piece_entity| {
+        let (mut transform, mut piece) = piece_query.get_mut(*piece_entity).unwrap();
+        if piece.stack_pos == i {
+            piece.stack_pos -= stack_offset;
+            transform.translation.z = piece.stack_pos as f32 * z_step;
+            i += 1;
+            true
+        } else {
+            stack_offset += 1;
+            i += 1;
+            false
+        }
+    });
+}

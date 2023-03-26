@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Piece, PieceIndex, PieceMoved, BORDER_SIZE_DENOM};
 
-const CONNECTION_DISTANCE: f32 = 30.0; // TODO scale to piece size
-const CONNECTION_ANGLE: f32 = 0.5; // rad
+const CONNECTION_DISTANCE_RATIO: f32 = 0.1;
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
@@ -174,7 +173,6 @@ impl Puzzle {
     }
 
     pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoved> {
-        // TODO calculate delta and move whole group with it
         let piece_transform = self.with_piece(index, |piece| piece.transform).unwrap();
         let inverse_piece_transform =
             Transform::from_matrix(piece_transform.compute_matrix().inverse());
@@ -224,12 +222,12 @@ impl Puzzle {
             .collect();
 
         let mut connection_count = 0;
+        let connection_dist =
+            CONNECTION_DISTANCE_RATIO * self.piece_width.min(self.piece_height) as f32;
         let closest = neighbors
             .into_iter()
             .map(|other| self.single_connection_check(index, &other))
-            .filter(|(_, distance, angle, _)| {
-                *distance <= CONNECTION_DISTANCE && *angle <= CONNECTION_ANGLE
-            })
+            .filter(|(_, distance, _)| *distance <= connection_dist)
             .inspect(|_| connection_count += 1)
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -237,7 +235,7 @@ impl Puzzle {
             let mut events = self.move_piece(index, closest.0);
 
             let new_group_index = self
-                .with_piece(&closest.3, |piece| piece.group_index)
+                .with_piece(&closest.2, |piece| piece.group_index)
                 .unwrap();
             let old_group_index = self
                 .with_piece_mut(index, |piece| {
@@ -261,7 +259,7 @@ impl Puzzle {
         &mut self,
         index: &PieceIndex,
         other: &PieceIndex,
-    ) -> (Transform, f32, f32, PieceIndex) {
+    ) -> (Transform, f32, PieceIndex) {
         let perfect = self
             .with_piece(other, |piece| {
                 let x = piece.transform.translation.x
@@ -272,18 +270,15 @@ impl Puzzle {
             })
             .unwrap();
 
-        let (distance, angle) = self
+        let distance = self
             .with_piece(index, |piece| {
-                (
-                    perfect
-                        .translation
-                        .truncate()
-                        .distance(piece.transform.translation.truncate()),
-                    perfect.rotation.angle_between(piece.transform.rotation),
-                )
+                perfect
+                    .translation
+                    .truncate()
+                    .distance(piece.transform.translation.truncate())
             })
             .unwrap();
 
-        (perfect, distance, angle, other.clone())
+        (perfect, distance, other.clone())
     }
 }

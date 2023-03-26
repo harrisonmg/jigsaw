@@ -1,9 +1,6 @@
 # TODO
-* transform and rebroadcast cursor move event?
-    * pan camera (cursor delta)
-    * proper zoom (cursor pos)
-* cut pieces slightly oversized to fix tiny gaps when connected errors
 * side shader
+* click on any part of piece
 * frame, group lock (only at client level?), random starting pos
 * outline at low z height
 * tween?

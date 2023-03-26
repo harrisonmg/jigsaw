@@ -11,7 +11,7 @@ pub struct LoaderPlugin;
 
 impl Plugin for LoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_load_task)
+        app.add_systems(OnEnter(AppState::Loading), spawn_load_task)
             .add_systems(Update, handle_load_task.run_if(in_state(AppState::Loading)));
     }
 }
@@ -51,7 +51,7 @@ fn spawn_load_task(mut commands: Commands) {
         let image = image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
             .unwrap()
             .to_rgba8();
-        tx.send(Puzzle::new(image, 9)).unwrap();
+        tx.send(Puzzle::new(image, 16)).unwrap();
     });
     commands.insert_resource(loader);
 }

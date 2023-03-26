@@ -7,10 +7,10 @@ use usvg::NodeExt;
 
 use crate::Puzzle;
 
-const TAB_LENGTH_PERCENT: f64 = 0.30;
-const TAB_OUTER_SIZE_PERCENT: f64 = 0.36;
-const TAB_INNER_SIZE_PERCENT: f64 = 0.22;
-const PIECE_OVERSIZE_PERCENT: f64 = 0.05;
+const TAB_LENGTH_RATIO: f64 = 0.30;
+const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
+const TAB_INNER_SIZE_RATIO: f64 = 0.22;
+const PIECE_OVERSIZE_RATIO: f64 = 0.01;
 pub(crate) const BORDER_SIZE_DENOM: u32 = 10;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -224,13 +224,15 @@ impl Piece {
     ) -> Self {
         let kind = PieceKind::new(index, puzzle.puzzle_width(), puzzle.puzzle_height());
 
-        let (sprite, sprite_origin_x, sprite_origin_y) = Piece::cut_sprite(
-            index,
-            puzzle.piece_width(),
-            puzzle.piece_height(),
-            border_size,
-            image,
-            kind,
+        let (sprite, sprite_origin_x, sprite_origin_y) =
+            Piece::cut_sprite(index, puzzle, border_size, image, kind);
+
+        // TODO
+        let padding = 120;
+        let initial_position = bevy::prelude::Vec3::new(
+            index.1 as f32 * (puzzle.piece_height() + padding) as f32,
+            -(index.0 as f32 * (puzzle.piece_width() + padding) as f32),
+            0.0,
         );
 
         Piece {
@@ -239,15 +241,15 @@ impl Piece {
             sprite: sprite.into(),
             sprite_origin_x,
             sprite_origin_y,
-            transform: bevy::prelude::Transform::IDENTITY,
+            transform: bevy::prelude::Transform::from_translation(initial_position),
             group_index,
         }
     }
 
     fn tab_size(piece_width: u32, piece_height: u32) -> (u32, u32) {
         (
-            (TAB_LENGTH_PERCENT * f64::from(piece_width)) as u32,
-            (TAB_LENGTH_PERCENT * f64::from(piece_height)) as u32,
+            (TAB_LENGTH_RATIO * f64::from(piece_width)) as u32,
+            (TAB_LENGTH_RATIO * f64::from(piece_height)) as u32,
         )
     }
 
@@ -259,13 +261,14 @@ impl Piece {
 
     fn cut_sprite(
         index: PieceIndex,
-        piece_width: u32,
-        piece_height: u32,
+        puzzle: &Puzzle,
         border_size: u32,
         image: &mut image::RgbaImage,
         kind: PieceKind,
     ) -> (image::RgbaImage, f64, f64) {
         let PieceIndex(row, col) = index;
+        let piece_width = puzzle.piece_width();
+        let piece_height = puzzle.piece_height();
         let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
         let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
         let (north_blank, south_blank, east_blank, west_blank) = kind.blanks();
@@ -273,10 +276,8 @@ impl Piece {
         let sprite_width = piece_width + tab_width * (east_tab + west_tab) + 2 * border_size;
         let sprite_height = piece_height + tab_height * (north_tab + south_tab) + 2 * border_size;
 
-        let mut sprite_origin_x: f64 =
-            (border_size + piece_width / 2 + west_tab * tab_width).into();
-        let mut sprite_origin_y: f64 =
-            (border_size + piece_height / 2 + south_tab * tab_height).into();
+        let sprite_origin_x: f64 = (border_size + piece_width / 2 + west_tab * tab_width).into();
+        let sprite_origin_y: f64 = (border_size + piece_height / 2 + south_tab * tab_height).into();
 
         let mut crop = image::imageops::crop(
             image,
@@ -297,9 +298,31 @@ impl Piece {
             root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
         };
 
+        let oversize = piece_width.min(piece_height) as f64 * PIECE_OVERSIZE_RATIO;
+        let mut n_oversize = 0.0;
+        let mut s_oversize = 0.0;
+        let mut e_oversize = 0.0;
+        let mut w_oversize = 0.0;
+
+        if row > 0 {
+            n_oversize = oversize;
+        }
+
+        if row < puzzle.puzzle_height() - 1 {
+            s_oversize = oversize;
+        }
+
+        if col > 0 {
+            w_oversize = oversize;
+        }
+
+        if col < puzzle.puzzle_width() - 1 {
+            e_oversize = oversize;
+        }
+
         let mut path_data = usvg::PathData::new();
-        let mut cursor_x: f64 = (west_tab * tab_width + border_size).into();
-        let mut cursor_y: f64 = (north_tab * tab_height + border_size).into();
+        let mut cursor_x = (west_tab * tab_width + border_size) as f64 - w_oversize;
+        let mut cursor_y = (north_tab * tab_height + border_size) as f64 - n_oversize;
 
         // start in northwest corner
         path_data.push_move_to(cursor_x, cursor_y);
@@ -316,12 +339,12 @@ impl Piece {
         let tab_width: f64 = tab_width.into();
         let tab_height: f64 = tab_height.into();
 
-        let mut ns_tab_inner_size: f64 = (TAB_INNER_SIZE_PERCENT * piece_width).round();
+        let mut ns_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_width).round();
         if ns_tab_inner_size / 2.0 != 0.0 {
             ns_tab_inner_size -= 1.0;
         }
 
-        let mut ns_tab_outer_size: f64 = (TAB_OUTER_SIZE_PERCENT * piece_width).round();
+        let mut ns_tab_outer_size: f64 = (TAB_OUTER_SIZE_RATIO * piece_width).round();
         if ns_tab_outer_size / 2.0 != 0.0 {
             ns_tab_outer_size -= 1.0;
         }
@@ -329,12 +352,12 @@ impl Piece {
         let ns_corner_seg_size = (piece_width - ns_tab_inner_size) / 2.0;
         let ns_bulge_half_size = (ns_tab_outer_size - ns_tab_inner_size) / 2.0;
 
-        let mut ew_tab_inner_size: f64 = (TAB_INNER_SIZE_PERCENT * piece_height).round();
+        let mut ew_tab_inner_size: f64 = (TAB_INNER_SIZE_RATIO * piece_height).round();
         if ew_tab_inner_size / 2.0 != 0.0 {
             ew_tab_inner_size -= 1.0;
         }
 
-        let mut ew_tab_outer_size: f64 = (TAB_OUTER_SIZE_PERCENT * piece_height).round();
+        let mut ew_tab_outer_size: f64 = (TAB_OUTER_SIZE_RATIO * piece_height).round();
         if ew_tab_outer_size / 2.0 != 0.0 {
             ew_tab_outer_size -= 1.0;
         }
@@ -343,87 +366,80 @@ impl Piece {
         let ew_bulge_half_size = (ew_tab_outer_size - ew_tab_inner_size) / 2.0;
 
         // northern eastward path
-        rel_line(ns_corner_seg_size, 0.0);
+        rel_line(w_oversize + ns_corner_seg_size - n_oversize, 0.0);
 
         if north_tab > 0 {
             rel_line(-ns_bulge_half_size, -tab_height);
-            rel_line(ns_tab_outer_size, 0.0);
+            rel_line(ns_tab_outer_size + 2.0 * n_oversize, 0.0);
             rel_line(-ns_bulge_half_size, tab_height);
         } else if north_blank > 0 {
-            rel_line(-ns_bulge_half_size, tab_height);
+            rel_line(2.0 * n_oversize, 0.0);
+            rel_line(-ns_bulge_half_size - n_oversize, tab_height + n_oversize);
             rel_line(ns_tab_outer_size, 0.0);
-            rel_line(-ns_bulge_half_size, -tab_height);
+            rel_line(-ns_bulge_half_size - n_oversize, -tab_height - n_oversize);
+            rel_line(2.0 * n_oversize, 0.0);
         } else {
             rel_line(ns_tab_inner_size, 0.0);
         }
 
-        rel_line(ns_corner_seg_size, 0.0);
+        rel_line(ns_corner_seg_size - n_oversize + e_oversize, 0.0);
 
         // eastern southward path
-        rel_line(0.0, ew_corner_seg_size);
+        rel_line(0.0, n_oversize + ew_corner_seg_size - e_oversize);
 
         if east_tab > 0 {
             rel_line(tab_width, -ew_bulge_half_size);
-            rel_line(0.0, ew_tab_outer_size);
+            rel_line(0.0, ew_tab_outer_size + 2.0 * e_oversize);
             rel_line(-tab_width, -ew_bulge_half_size);
         } else if east_blank > 0 {
-            rel_line(-tab_width, -ew_bulge_half_size);
+            rel_line(0.0, 2.0 * e_oversize);
+            rel_line(-tab_width - e_oversize, -ew_bulge_half_size - e_oversize);
             rel_line(0.0, ew_tab_outer_size);
-            rel_line(tab_width, -ew_bulge_half_size);
+            rel_line(tab_width + e_oversize, -ew_bulge_half_size - e_oversize);
+            rel_line(0.0, 2.0 * e_oversize);
         } else {
             rel_line(0.0, ew_tab_inner_size);
         }
 
-        rel_line(0.0, ew_corner_seg_size);
+        rel_line(0.0, ew_corner_seg_size - e_oversize + s_oversize);
 
         // southern westward path
-        rel_line(-ns_corner_seg_size, 0.0);
+        rel_line(-e_oversize - ns_corner_seg_size + s_oversize, 0.0);
 
         if south_tab > 0 {
             rel_line(ns_bulge_half_size, tab_height);
-            rel_line(-ns_tab_outer_size, 0.0);
+            rel_line(-ns_tab_outer_size - 2.0 * s_oversize, 0.0);
             rel_line(ns_bulge_half_size, -tab_height);
         } else if south_blank > 0 {
-            rel_line(ns_bulge_half_size, -tab_height);
+            rel_line(-2.0 * s_oversize, 0.0);
+            rel_line(ns_bulge_half_size + s_oversize, -tab_height - s_oversize);
             rel_line(-ns_tab_outer_size, 0.0);
-            rel_line(ns_bulge_half_size, tab_height);
+            rel_line(ns_bulge_half_size + s_oversize, tab_height + s_oversize);
+            rel_line(-2.0 * s_oversize, 0.0);
         } else {
             rel_line(-ns_tab_inner_size, 0.0);
         }
 
-        rel_line(-ns_corner_seg_size, 0.0);
+        rel_line(s_oversize - ns_corner_seg_size - w_oversize, 0.0);
 
         // western northward path
-        rel_line(0.0, -ew_corner_seg_size);
+        rel_line(0.0, -s_oversize - ew_corner_seg_size + w_oversize);
 
         if west_tab > 0 {
             rel_line(-tab_width, ew_bulge_half_size);
-            rel_line(0.0, -ew_tab_outer_size);
+            rel_line(0.0, -ew_tab_outer_size - 2.0 * w_oversize);
             rel_line(tab_width, ew_bulge_half_size);
         } else if west_blank > 0 {
-            rel_line(tab_width, ew_bulge_half_size);
+            rel_line(0.0, -2.0 * w_oversize);
+            rel_line(tab_width + w_oversize, ew_bulge_half_size + w_oversize);
             rel_line(0.0, -ew_tab_outer_size);
-            rel_line(-tab_width, ew_bulge_half_size);
+            rel_line(-tab_width - w_oversize, ew_bulge_half_size + w_oversize);
+            rel_line(0.0, -2.0 * w_oversize);
         } else {
             rel_line(0.0, -ew_tab_inner_size);
         }
 
-        rel_line(0.0, -ew_corner_seg_size);
-
-        path_data.transform(usvg::Transform::new_translate(
-            -sprite_origin_x,
-            -sprite_origin_y,
-        ));
-        path_data.transform(usvg::Transform::new_scale(
-            1.0 + PIECE_OVERSIZE_PERCENT,
-            1.0 + PIECE_OVERSIZE_PERCENT,
-        ));
-        sprite_origin_x *= 1.0 + PIECE_OVERSIZE_PERCENT / 2.0;
-        sprite_origin_y *= 1.0 + PIECE_OVERSIZE_PERCENT / 2.0;
-        path_data.transform(usvg::Transform::new_translate(
-            sprite_origin_x,
-            sprite_origin_y,
-        ));
+        rel_line(0.0, w_oversize - ew_corner_seg_size - n_oversize);
 
         tree.root.append_kind(usvg::NodeKind::Path(usvg::Path {
             fill: Some(usvg::Fill::default()), // black
