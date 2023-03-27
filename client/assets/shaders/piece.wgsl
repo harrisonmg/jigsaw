@@ -8,7 +8,7 @@ struct PieceParams {
   // 0b0010 = south
   // 0b0100 = east
   // 0b1000 = west
-  sides: u32,
+  open_sides: u32,
 
   padding: u32,
 }
@@ -25,7 +25,7 @@ var texture_sampler: sampler;
 
 const directions: f32 = 8.0;
 const quality: f32 = 4.0;
-const size: f32 = 1.0;
+const size: f32 = 0.0;
 
 const pi2 = 6.28318530718;
 
@@ -45,17 +45,17 @@ fn fragment(
        }
    }
 
-   // uncomment to view uv coord (0.0, 0.0)
+   // uncomment to view uv origin (0.0, 0.0)
 
-   // if abs(uv.x - 0.5) < 0.005 || abs(uv.y - 0.5) < 0.005 {
-   //   return vec4(1.0, 0.0, 0.0, 1.0);
-   // }
+   if abs(uv.x - 0.5) < 0.005 || abs(uv.y - 0.5) < 0.005 {
+     return vec4(1.0, 0.0, 0.0, 1.0);
+   }
 
    // uncomment to view sprite origin
 
-   // if abs(uv.x - params.sprite_origin_x) < 0.005 || abs(uv.y - params.sprite_origin_y) < 0.005 {
-   //   return vec4(1.0, 0.0, 0.0, 1.0);
-   // }
+   if abs(uv.x - params.sprite_origin_x) < 0.005 || abs(uv.y - params.sprite_origin_y) < 0.005 {
+     return vec4(1.0, 0.0, 0.0, 1.0);
+   }
 
    // only blur near edges
    if summed_color.w >= 1.0 + directions * quality || summed_color.w == 0.0 {
@@ -72,41 +72,41 @@ fn fragment(
 
    // uncomment to debug edges
 
-   // if uv_prime.x < 0.0 {
-   //    if uv_prime.y > 0.0 {
-   //        // west
-   //        return vec4(1.0, 0.0, 0.0, 1.0);
-   //    } else if uv_prime.y < 0.0 {
-   //        // north
-   //        return vec4(0.0, 1.0, 0.0, 1.0);
-   //    }
-   // } else {
-   //    if uv_prime.y > 0.0 {
-   //        // south
-   //        return vec4(0.0, 0.0, 1.0, 1.0);
-   //    } else if uv_prime.y < 0.0 {
-   //        // east
-   //        return vec4(1.0, 0.0, 1.0, 1.0);
-   //    }
-   // }
-
    if uv_prime.x < 0.0 {
-       if uv_prime.y > 0.0 && (params.sides & 8u) == 8u {
-           // west
-           return blurred_color;
-       } else if uv_prime.y < 0.0 && (params.sides & 1u) == 1u {
-           // north
-           return blurred_color;
-       }
+      if uv_prime.y > 0.0 {
+          // west
+          return vec4(1.0, 0.0, 0.0, 1.0);
+      } else if uv_prime.y < 0.0 {
+          // north
+          return vec4(0.0, 1.0, 0.0, 1.0);
+      }
    } else {
-       if uv_prime.y > 0.0 && (params.sides & 2u) == 2u {
-           // south
-           return blurred_color;
-       } else if uv_prime.y < 0.0 && (params.sides & 4u) == 4u {
-           // east
-           return blurred_color;
-       }
+      if uv_prime.y > 0.0 {
+          // south
+          return vec4(0.0, 0.0, 1.0, 1.0);
+      } else if uv_prime.y < 0.0 {
+          // east
+          return vec4(1.0, 0.0, 1.0, 1.0);
+      }
    }
 
-   return color;
+   /*if uv_prime.x < 0.0 {*/
+   /*    if uv_prime.y > 0.0 && (params.open_sides & 8u) == 8u {*/
+   /*        // west*/
+   /*        return blurred_color;*/
+   /*    } else if uv_prime.y < 0.0 && (params.open_sides & 1u) == 1u {*/
+   /*        // north*/
+   /*        return blurred_color;*/
+   /*    }*/
+   /*} else {*/
+   /*    if uv_prime.y > 0.0 && (params.open_sides & 2u) == 2u {*/
+   /*        // south*/
+   /*        return blurred_color;*/
+   /*    } else if uv_prime.y < 0.0 && (params.open_sides & 4u) == 4u {*/
+   /*        // east*/
+   /*        return blurred_color;*/
+   /*    }*/
+   /*}*/
+
+   /*return color;*/
 }

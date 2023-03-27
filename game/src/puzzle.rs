@@ -117,14 +117,12 @@ impl Puzzle {
         self.puzzle_height
     }
 
-    #[allow(unused)]
-    fn with_piece<T>(&self, index: &PieceIndex, op: impl FnOnce(&Piece) -> T) -> Option<T> {
+    pub fn with_piece<T>(&self, index: &PieceIndex, op: impl FnOnce(&Piece) -> T) -> Option<T> {
         self.piece_map
             .get(index)
             .map(|piece_ref| op(&piece_ref.read().unwrap()))
     }
 
-    #[allow(unused)]
     fn with_piece_mut<T>(
         &mut self,
         index: &PieceIndex,
@@ -135,7 +133,7 @@ impl Puzzle {
             .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
     }
 
-    pub fn with_pieces(&self, mut op: impl FnMut(&Piece)) {
+    pub fn with_pieces<T>(&self, mut op: impl FnMut(&Piece) -> T) -> Vec<T> {
         self.piece_map
             .values()
             .map(|piece_ref| op(&piece_ref.read().unwrap()))
@@ -143,25 +141,45 @@ impl Puzzle {
     }
 
     #[allow(unused)]
-    fn with_pieces_mut(&mut self, mut op: impl FnMut(&mut Piece)) {
+    fn with_pieces_mut<T>(&mut self, mut op: impl FnMut(&mut Piece) -> T) -> Vec<T> {
         self.piece_map
             .values_mut()
             .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
             .collect()
     }
 
-    pub fn with_group(&self, group_index: usize, mut op: impl FnMut(&Piece)) {
-        self.groups[group_index]
-            .iter()
-            .map(|piece_ref| op(&piece_ref.read().unwrap()))
-            .collect()
+    pub fn with_group<T>(
+        &self,
+        group_index: usize,
+        mut op: impl FnMut(&Piece) -> T,
+    ) -> Option<Vec<T>> {
+        let group = self.groups.get(group_index);
+        if let Some(group) = group {
+            return Some(
+                group
+                    .iter()
+                    .map(|piece_ref| op(&piece_ref.read().unwrap()))
+                    .collect(),
+            );
+        }
+        None
     }
 
-    pub fn with_group_mut(&mut self, group_index: usize, mut op: impl FnMut(&mut Piece)) {
-        self.groups[group_index]
-            .iter_mut()
-            .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
-            .collect()
+    pub fn with_group_mut<T>(
+        &self,
+        group_index: usize,
+        mut op: impl FnMut(&mut Piece) -> T,
+    ) -> Option<Vec<T>> {
+        let group = self.groups.get(group_index);
+        if let Some(group) = group {
+            return Some(
+                group
+                    .iter()
+                    .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
+                    .collect(),
+            );
+        }
+        None
     }
 
     pub fn piece_width(&self) -> u32 {
@@ -199,25 +217,18 @@ impl Puzzle {
         for index in piece_indices {
             events.extend(self.make_piece_connections(&index));
         }
+        let new_group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        self.update_open_sides(new_group_index);
         events
     }
 
     fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
-        let possible_neighbors = [
-            (index.0.saturating_add(1), index.1),
-            (index.0.saturating_sub(1), index.1),
-            (index.0, index.1.saturating_add(1)),
-            (index.0, index.1.saturating_sub(1)),
-        ];
-
-        let neighbors: Vec<_> = possible_neighbors
+        let neighbors: Vec<_> = index
+            .neighbors(self.puzzle_width, self.puzzle_height)
             .into_iter()
-            .filter(|(row, col)| *row < self.puzzle_height && *col < self.puzzle_width)
-            .map(|other| PieceIndex(other.0, other.1))
             .filter(|other| {
-                other != index
-                    && self.with_piece(index, |piece| piece.group_index)
-                        != self.with_piece(&other, |piece| piece.group_index)
+                self.with_piece(index, |piece| piece.group_index)
+                    != self.with_piece(&other, |piece| piece.group_index)
             })
             .collect();
 
@@ -280,5 +291,39 @@ impl Puzzle {
             .unwrap();
 
         (perfect, distance, other.clone())
+    }
+
+    fn update_open_sides(&mut self, group_index: usize) {
+        let indicies = self.with_group(group_index, |piece| piece.index()).unwrap();
+        for index in indicies {
+            let mut open_sides = self.with_piece(&index, |piece| piece.open_sides).unwrap();
+
+            if let Some(other) = index.north_neighbor() {
+                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
+                    open_sides ^= 0b0001;
+                }
+            }
+
+            if let Some(other) = index.south_neighbor(self.puzzle_height) {
+                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
+                    open_sides ^= 0b0010;
+                }
+            }
+
+            if let Some(other) = index.east_neighbor(self.puzzle_width) {
+                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
+                    open_sides ^= 0b0100;
+                }
+            }
+
+            if let Some(other) = index.west_neighbor() {
+                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
+                    open_sides ^= 0b1000;
+                }
+            }
+
+            self.with_piece_mut(&index, |piece| piece.open_sides = open_sides)
+                .unwrap();
+        }
     }
 }

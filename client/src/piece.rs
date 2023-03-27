@@ -19,7 +19,11 @@ impl Plugin for PiecePlugin {
         app.add_event::<PieceMoved>()
             .add_systems(OnEnter(AppState::Setup), piece_setup)
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
+            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)))
+            .add_systems(
+                Update,
+                update_piece_material.run_if(in_state(AppState::Playing)),
+            );
     }
 }
 
@@ -99,8 +103,6 @@ impl PieceBundle {
             params: PieceMaterialParams {
                 sprite_origin_x: sprite_origin.x,
                 sprite_origin_y: sprite_origin.y,
-                // TODO
-                sides: 15,
                 ..default()
             },
         });
@@ -196,4 +198,18 @@ fn sort_pieces(
             false
         }
     });
+}
+
+fn update_piece_material(
+    piece_query: Query<(&PieceComponent, &mut Handle<PieceMaterial>)>,
+    puzzle: Res<Puzzle>,
+    mut materials: ResMut<Assets<PieceMaterial>>,
+) {
+    for (piece_component, handle) in piece_query.iter() {
+        if let Some(material) = materials.get_mut(&handle) {
+            puzzle.with_piece(&piece_component.index(), |piece| {
+                material.params.open_sides = piece.open_sides;
+            });
+        }
+    }
 }

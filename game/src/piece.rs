@@ -18,26 +18,64 @@ pub struct PieceIndex(pub u8, pub u8);
 
 impl PieceIndex {
     pub fn neighbors(self, puzzle_width: u8, puzzle_height: u8) -> Vec<Self> {
+        [
+            self.north_neighbor(),
+            self.south_neighbor(puzzle_height),
+            self.east_neighbor(puzzle_width),
+            self.west_neighbor(),
+        ]
+        .into_iter()
+        .filter_map(|n| n)
+        .collect()
+    }
+
+    pub fn north_neighbor(self) -> Option<Self> {
         let PieceIndex(row, col) = self;
-        let mut neighbors = Vec::new();
-
         if row > 0 {
-            neighbors.push(PieceIndex(row - 1, col))
+            return Some(PieceIndex(row - 1, col));
         }
+        None
+    }
 
+    pub fn south_neighbor(self, puzzle_height: u8) -> Option<Self> {
+        let PieceIndex(row, col) = self;
         if row < puzzle_height - 1 {
-            neighbors.push(PieceIndex(row + 1, col))
+            return Some(PieceIndex(row + 1, col));
         }
+        None
+    }
 
-        if col > 0 {
-            neighbors.push(PieceIndex(row, col - 1))
-        }
-
+    pub fn east_neighbor(self, puzzle_width: u8) -> Option<Self> {
+        let PieceIndex(row, col) = self;
         if col < puzzle_width - 1 {
-            neighbors.push(PieceIndex(row, col + 1))
+            return Some(PieceIndex(row, col + 1));
         }
+        None
+    }
 
-        neighbors
+    pub fn west_neighbor(self) -> Option<Self> {
+        let PieceIndex(row, col) = self;
+        if col > 0 {
+            return Some(PieceIndex(row, col - 1));
+        }
+        None
+    }
+
+    pub fn open_sides(self, puzzle_width: u8, puzzle_height: u8) -> u32 {
+        let mut open_sides = 0b1111;
+        if self.north_neighbor().is_none() {
+            open_sides ^= 0b0001;
+        }
+        if self.south_neighbor(puzzle_height).is_none() {
+            open_sides ^= 0b0010;
+        }
+        if self.east_neighbor(puzzle_width).is_none() {
+            open_sides ^= 0b0100;
+        }
+        if self.west_neighbor().is_none() {
+            open_sides ^= 0b1000;
+        }
+        open_sides
     }
 }
 
@@ -210,6 +248,14 @@ pub struct Piece {
     sprite: crate::image::Image,
     sprite_origin_x: f64,
     sprite_origin_y: f64,
+
+    // bitmask:
+    // 0b0001 = north
+    // 0b0010 = south
+    // 0b0100 = east
+    // 0b1000 = west
+    pub open_sides: u32,
+
     pub(crate) transform: bevy::prelude::Transform,
     pub(crate) group_index: usize,
 }
@@ -235,12 +281,15 @@ impl Piece {
             0.0,
         );
 
+        let open_sides = index.open_sides(puzzle.puzzle_width(), puzzle.puzzle_height());
+
         Piece {
             index,
             kind,
             sprite: sprite.into(),
             sprite_origin_x,
             sprite_origin_y,
+            open_sides,
             transform: bevy::prelude::Transform::from_translation(initial_position),
             group_index,
         }

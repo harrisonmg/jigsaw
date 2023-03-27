@@ -9,12 +9,12 @@ use bevy::{
 pub struct PieceMaterialParams {
     pub sprite_origin_x: f32,
     pub sprite_origin_y: f32,
-    pub sides: u32,
+    pub open_sides: u32,
     pub padding: u32,
 }
 
 #[derive(AsBindGroup, TypeUuid, Debug, Clone)]
-#[uuid = "77a244f3-9ff1-47e7-87de-97ffd4650eeb"]
+#[uuid = "77a244c3-9ff1-47e7-87de-97ffd4650eeb"]
 pub struct PieceMaterial {
     #[uniform(0)]
     pub params: PieceMaterialParams,
