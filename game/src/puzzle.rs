@@ -217,8 +217,6 @@ impl Puzzle {
         for index in piece_indices {
             events.extend(self.make_piece_connections(&index));
         }
-        let new_group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
-        self.update_open_sides(new_group_index);
         events
     }
 
@@ -228,7 +226,7 @@ impl Puzzle {
             .into_iter()
             .filter(|other| {
                 self.with_piece(index, |piece| piece.group_index)
-                    != self.with_piece(&other, |piece| piece.group_index)
+                    != self.with_piece(other, |piece| piece.group_index)
             })
             .collect();
 
@@ -249,10 +247,7 @@ impl Puzzle {
                 .with_piece(&closest.2, |piece| piece.group_index)
                 .unwrap();
             let old_group_index = self
-                .with_piece_mut(index, |piece| {
-                    let old = piece.group_index;
-                    old
-                })
+                .with_piece_mut(index, |piece| piece.group_index)
                 .unwrap();
             self.with_group_mut(old_group_index, |piece| piece.group_index = new_group_index);
             let recruits = self.groups[old_group_index].drain(..).collect::<Vec<_>>();
@@ -290,40 +285,6 @@ impl Puzzle {
             })
             .unwrap();
 
-        (perfect, distance, other.clone())
-    }
-
-    fn update_open_sides(&mut self, group_index: usize) {
-        let indicies = self.with_group(group_index, |piece| piece.index()).unwrap();
-        for index in indicies {
-            let mut open_sides = self.with_piece(&index, |piece| piece.open_sides).unwrap();
-
-            if let Some(other) = index.north_neighbor() {
-                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
-                    open_sides ^= 0b0001;
-                }
-            }
-
-            if let Some(other) = index.south_neighbor(self.puzzle_height) {
-                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
-                    open_sides ^= 0b0010;
-                }
-            }
-
-            if let Some(other) = index.east_neighbor(self.puzzle_width) {
-                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
-                    open_sides ^= 0b0100;
-                }
-            }
-
-            if let Some(other) = index.west_neighbor() {
-                if self.with_piece(&other, |other| other.group_index).unwrap() == group_index {
-                    open_sides ^= 0b1000;
-                }
-            }
-
-            self.with_piece_mut(&index, |piece| piece.open_sides = open_sides)
-                .unwrap();
-        }
+        (perfect, distance, *other)
     }
 }

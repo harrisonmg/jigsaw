@@ -1,31 +1,20 @@
 use bevy::{
     prelude::*,
     reflect::TypeUuid,
-    render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
+    render::render_resource::{AsBindGroup, ShaderRef},
     sprite::Material2d,
 };
-
-#[derive(Debug, Clone, Default, ShaderType)]
-pub struct PieceMaterialParams {
-    pub sprite_origin_x: f32,
-    pub sprite_origin_y: f32,
-    pub open_sides: u32,
-    pub padding: u32,
-}
 
 #[derive(AsBindGroup, TypeUuid, Debug, Clone)]
 #[uuid = "77a244c3-9ff1-47e7-87de-97ffd4650eeb"]
 pub struct PieceMaterial {
-    #[uniform(0)]
-    pub params: PieceMaterialParams,
-    #[texture(1)]
-    #[sampler(2)]
+    #[texture(0)]
+    #[sampler(1)]
     pub texture: Handle<Image>,
 }
 
 impl Material2d for PieceMaterial {
     fn fragment_shader() -> ShaderRef {
-        PieceMaterialParams::assert_uniform_compat();
         "shaders/piece.wgsl".into()
     }
 }

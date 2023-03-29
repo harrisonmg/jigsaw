@@ -1,9 +1,4 @@
 # TODO
-* side shader
-    - made progress on this, but the shader infuriatingly refuses to rebuild (or something?)
-    - not sure if I even want side shading at this point
-    - check up on the sprite edges without pixel perfect SVG mask phase?
-* click on any part of piece
 * frame, group lock (only at client level?), random starting pos
 * outline at low z height
 * tween?

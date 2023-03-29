@@ -108,7 +108,7 @@ fn zoom(
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut piece_move_events: EventWriter<PieceMoved>,
-    mut piece_query: Query<(&GlobalTransform, &mut PieceComponent, Entity)>,
+    mut piece_query: Query<(&mut PieceComponent, &GlobalTransform, Entity)>,
     world_cursor_pos: Res<WorldCursorPosition>,
     mut puzzle: ResMut<Puzzle>,
     mut held_piece: Option<ResMut<HeldPiece>>,
@@ -126,19 +126,15 @@ fn click_piece(
                         let mut candidate_entity = None;
                         let mut candidate_z = f32::NEG_INFINITY;
 
-                        for (piece_transform, _, piece_entity) in piece_query.iter() {
+                        for (piece, piece_transform, piece_entity) in piece_query.iter() {
                             let inverse_transform =
                                 Transform::from_matrix(piece_transform.compute_matrix().inverse());
                             let relative_click_pos =
                                 inverse_transform.transform_point(world_cursor_pos.0.extend(0.0));
 
-                            let half_width = puzzle.piece_width() as f32 / 2.0;
-                            let half_height = puzzle.piece_height() as f32 / 2.0;
-
                             let piece_z = piece_transform.translation().z;
 
-                            if relative_click_pos.x.abs() <= half_width
-                                && relative_click_pos.y.abs() <= half_height
+                            if piece.within_sprite_bounds(relative_click_pos.truncate())
                                 && piece_z > candidate_z
                             {
                                 candidate_entity = Some(piece_entity);
@@ -147,7 +143,7 @@ fn click_piece(
                         }
 
                         if let Some(piece_entity) = candidate_entity {
-                            let (_, mut piece, _) = piece_query.get_mut(piece_entity).unwrap();
+                            let (mut piece, _, _) = piece_query.get_mut(piece_entity).unwrap();
                             commands.insert_resource(HeldPiece(piece.index()));
                             piece_stack.put_on_top(&mut piece, candidate_entity.unwrap());
                             break;

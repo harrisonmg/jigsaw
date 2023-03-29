@@ -10,7 +10,7 @@ use crate::Puzzle;
 const TAB_LENGTH_RATIO: f64 = 0.30;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
 const TAB_INNER_SIZE_RATIO: f64 = 0.22;
-const PIECE_OVERSIZE_RATIO: f64 = 0.01;
+const PIECE_OVERSIZE_RATIO: f64 = 0.005;
 pub(crate) const BORDER_SIZE_DENOM: u32 = 10;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -25,7 +25,7 @@ impl PieceIndex {
             self.west_neighbor(),
         ]
         .into_iter()
-        .filter_map(|n| n)
+        .flatten()
         .collect()
     }
 
@@ -59,23 +59,6 @@ impl PieceIndex {
             return Some(PieceIndex(row, col - 1));
         }
         None
-    }
-
-    pub fn open_sides(self, puzzle_width: u8, puzzle_height: u8) -> u32 {
-        let mut open_sides = 0b1111;
-        if self.north_neighbor().is_none() {
-            open_sides ^= 0b0001;
-        }
-        if self.south_neighbor(puzzle_height).is_none() {
-            open_sides ^= 0b0010;
-        }
-        if self.east_neighbor(puzzle_width).is_none() {
-            open_sides ^= 0b0100;
-        }
-        if self.west_neighbor().is_none() {
-            open_sides ^= 0b1000;
-        }
-        open_sides
     }
 }
 
@@ -248,14 +231,6 @@ pub struct Piece {
     sprite: crate::image::Image,
     sprite_origin_x: f64,
     sprite_origin_y: f64,
-
-    // bitmask:
-    // 0b0001 = north
-    // 0b0010 = south
-    // 0b0100 = east
-    // 0b1000 = west
-    pub open_sides: u32,
-
     pub(crate) transform: bevy::prelude::Transform,
     pub(crate) group_index: usize,
 }
@@ -281,15 +256,12 @@ impl Piece {
             0.0,
         );
 
-        let open_sides = index.open_sides(puzzle.puzzle_width(), puzzle.puzzle_height());
-
         Piece {
             index,
             kind,
             sprite: sprite.into(),
             sprite_origin_x,
             sprite_origin_y,
-            open_sides,
             transform: bevy::prelude::Transform::from_translation(initial_position),
             group_index,
         }
@@ -493,7 +465,7 @@ impl Piece {
         tree.root.append_kind(usvg::NodeKind::Path(usvg::Path {
             fill: Some(usvg::Fill::default()), // black
             data: Rc::new(path_data),
-            rendering_mode: usvg::ShapeRendering::CrispEdges,
+            //rendering_mode: usvg::ShapeRendering::CrispEdges,
             ..usvg::Path::default()
         }));
 

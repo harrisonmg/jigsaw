@@ -4,11 +4,7 @@ use bevy::{
 
 use game::{Piece, PieceIndex, PieceMoved, Puzzle};
 
-use crate::{
-    better_quad::BetterQuad,
-    material::{PieceMaterial, PieceMaterialParams},
-    states::AppState,
-};
+use crate::{better_quad::BetterQuad, material::PieceMaterial, states::AppState};
 
 const MAX_PIECE_HEIGHT: f32 = 900.0;
 
@@ -19,23 +15,29 @@ impl Plugin for PiecePlugin {
         app.add_event::<PieceMoved>()
             .add_systems(OnEnter(AppState::Setup), piece_setup)
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)))
-            .add_systems(
-                Update,
-                update_piece_material.run_if(in_state(AppState::Playing)),
-            );
+            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
     }
 }
 
 #[derive(Component)]
 pub struct PieceComponent {
     index: PieceIndex,
+    sprite_size: Vec2,
+    sprite_origin: Vec2,
     pub stack_pos: usize,
 }
 
 impl PieceComponent {
     pub fn index(&self) -> PieceIndex {
         self.index
+    }
+
+    pub fn within_sprite_bounds(&self, mut coords: Vec2) -> bool {
+        coords += self.sprite_origin;
+        return 0.0 <= coords.x
+            && coords.x <= self.sprite_size.x
+            && 0.0 <= coords.y
+            && coords.y <= self.sprite_size.y;
     }
 }
 
@@ -57,36 +59,31 @@ impl PieceBundle {
     ) -> Self {
         let sprite = piece.sprite_clone();
 
-        let sprite_width = sprite.width() as f32;
-        let sprite_height = sprite.height() as f32;
+        let sprite_size = Vec2::new(sprite.width() as f32, sprite.height() as f32);
 
-        let piece_component = PieceComponent {
-            index: piece.index(),
-            stack_pos,
-        };
-
-        let mut sprite_origin = Vec2::new(
+        let sprite_origin = Vec2::new(
             piece.sprite_origin_x() as f32,
             piece.sprite_origin_y() as f32,
         );
 
-        let mut mesh = Mesh::from(BetterQuad::new(
-            Vec2::new(sprite_width, sprite_height),
+        let piece_component = PieceComponent {
+            index: piece.index(),
+            sprite_size,
             sprite_origin,
-        ));
+            stack_pos,
+        };
 
-        sprite_origin.x /= sprite_width;
-        sprite_origin.y = (sprite_height - sprite_origin.y) / sprite_height;
+        let mut mesh = Mesh::from(BetterQuad::new(sprite_size, sprite_origin));
 
-        let x_offset = 0.5 - sprite_origin.x;
-        let y_offset = 0.5 - sprite_origin.y;
+        let x_offset = 0.5 - sprite_origin.x / sprite_size.x;
+        let y_offset = 0.5 - (sprite_size.y - sprite_origin.y) / sprite_size.y;
         let new_vertices = if let VertexAttributeValues::Float32x3(vertices) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
         {
             vertices
                 .iter()
                 .map(|vertex| {
-                    let mut points = vertex.clone();
+                    let mut points = *vertex;
                     points[0] += x_offset;
                     points[1] += y_offset;
                     points
@@ -100,11 +97,6 @@ impl PieceBundle {
         let mesh_handle = meshes.add(mesh);
         let material = materials.add(PieceMaterial {
             texture: image_assets.add(sprite.into()),
-            params: PieceMaterialParams {
-                sprite_origin_x: sprite_origin.x,
-                sprite_origin_y: sprite_origin.y,
-                ..default()
-            },
         });
         Self {
             piece: piece_component,
@@ -198,18 +190,4 @@ fn sort_pieces(
             false
         }
     });
-}
-
-fn update_piece_material(
-    piece_query: Query<(&PieceComponent, &mut Handle<PieceMaterial>)>,
-    puzzle: Res<Puzzle>,
-    mut materials: ResMut<Assets<PieceMaterial>>,
-) {
-    for (piece_component, handle) in piece_query.iter() {
-        if let Some(material) = materials.get_mut(&handle) {
-            puzzle.with_piece(&piece_component.index(), |piece| {
-                material.params.open_sides = piece.open_sides;
-            });
-        }
-    }
 }
