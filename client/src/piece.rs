@@ -153,9 +153,9 @@ fn piece_setup(
         let shadow_y_offset = shadow_sprite.height() as f32 / 2.0 - piece.shadow_origin_y() as f32;
         let shadow = SpriteBundle {
             transform: Transform::from_xyz(
-                shadow_x_offset + 10.0,
-                shadow_y_offset + 10.0,
-                -MIN_PIECE_HEIGHT + 1.0,
+                shadow_x_offset,
+                shadow_y_offset,
+                -MIN_PIECE_HEIGHT,
             ),
             texture: image_assets.add(piece.shadow_sprite_clone().into()),
             ..Default::default()
