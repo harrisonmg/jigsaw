@@ -6,6 +6,7 @@ use game::{Piece, PieceIndex, PieceMoved, Puzzle};
 
 use crate::{better_quad::BetterQuad, material::PieceMaterial, states::AppState};
 
+const MIN_PIECE_HEIGHT: f32 = 500.0;
 const MAX_PIECE_HEIGHT: f32 = 900.0;
 
 pub struct PiecePlugin;
@@ -98,12 +99,16 @@ impl PieceBundle {
         let material = materials.add(PieceMaterial {
             texture: image_assets.add(sprite.into()),
         });
+
+        let mut transform = piece.transform();
+        transform.translation.z = MIN_PIECE_HEIGHT;
+
         Self {
             piece: piece_component,
             mesh_bundle: MaterialMesh2dBundle {
                 mesh: mesh_handle.into(),
                 material,
-                transform: piece.transform(),
+                transform,
                 ..Default::default()
             },
         }
@@ -142,6 +147,25 @@ fn piece_setup(
         let piece_bundle =
             PieceBundle::new(piece, i, &mut image_assets, &mut meshes, &mut materials);
         let piece_entity = commands.spawn(piece_bundle).id();
+
+        let shadow_sprite = piece.shadow_sprite_clone();
+        let shadow_x_offset = shadow_sprite.width() as f32 / 2.0 - piece.shadow_origin_x() as f32;
+        let shadow_y_offset = shadow_sprite.height() as f32 / 2.0 - piece.shadow_origin_y() as f32;
+        let shadow = SpriteBundle {
+            transform: Transform::from_xyz(
+                shadow_x_offset + 10.0,
+                shadow_y_offset + 10.0,
+                -MIN_PIECE_HEIGHT + 1.0,
+            ),
+            texture: image_assets.add(piece.shadow_sprite_clone().into()),
+            ..Default::default()
+        };
+        let shadow_entity = commands.spawn(shadow).id();
+
+        commands
+            .entity(piece_entity)
+            .push_children(&[shadow_entity]);
+
         piece_map.0.insert(piece.index(), piece_entity);
         piece_stack.0.push(piece_entity);
         i += 1;
@@ -173,7 +197,7 @@ fn sort_pieces(
     mut piece_stack: ResMut<PieceStack>,
 ) {
     let piece_count = piece_query.iter().len();
-    let z_step = MAX_PIECE_HEIGHT / piece_count as f32;
+    let z_step = (MAX_PIECE_HEIGHT - MIN_PIECE_HEIGHT) / piece_count as f32;
 
     let mut stack_offset = 0;
     let mut i = 0;
@@ -181,7 +205,7 @@ fn sort_pieces(
         let (mut transform, mut piece) = piece_query.get_mut(*piece_entity).unwrap();
         if piece.stack_pos == i {
             piece.stack_pos -= stack_offset;
-            transform.translation.z = piece.stack_pos as f32 * z_step;
+            transform.translation.z = piece.stack_pos as f32 * z_step + MIN_PIECE_HEIGHT;
             i += 1;
             true
         } else {

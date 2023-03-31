@@ -230,6 +230,9 @@ pub struct Piece {
     sprite: crate::image::Image,
     sprite_origin_x: f64,
     sprite_origin_y: f64,
+    //shadow_sprite: crate::image::Image,
+    shadow_origin_x: f64,
+    shadow_origin_y: f64,
     pub(crate) transform: bevy::prelude::Transform,
     pub(crate) group_index: usize,
 }
@@ -260,6 +263,8 @@ impl Piece {
             sprite: sprite.into(),
             sprite_origin_x,
             sprite_origin_y,
+            shadow_origin_x: sprite_origin_x,
+            shadow_origin_y: sprite_origin_y,
             transform: bevy::prelude::Transform::from_translation(initial_position),
             group_index,
         }
@@ -500,12 +505,25 @@ impl Piece {
         self.sprite.clone()
     }
 
+    pub fn shadow_sprite_clone(&self) -> crate::image::Image {
+        //self.shadow_sprite.clone()
+        self.sprite.clone()
+    }
+
     pub fn sprite_origin_x(&self) -> f64 {
         self.sprite_origin_x
     }
 
     pub fn sprite_origin_y(&self) -> f64 {
         self.sprite_origin_y
+    }
+
+    pub fn shadow_origin_x(&self) -> f64 {
+        self.shadow_origin_x
+    }
+
+    pub fn shadow_origin_y(&self) -> f64 {
+        self.shadow_origin_y
     }
 
     pub fn transform(&self) -> bevy::prelude::Transform {
