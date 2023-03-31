@@ -26,13 +26,4 @@ features = [
 ]
 
 [dependencies.bevy]
-git = "https://github.com/bevyengine/bevy.git"
-#default-features = false
-#features = [
-#  "bevy_asset",
-#  "bevy_core_pipeline",
-#  "bevy_pbr",
-#  "bevy_render",
-#  "bevy_sprite",
-#  "bevy_winit",
-#]
+git = "https://github.com/bevyengine/bevy"

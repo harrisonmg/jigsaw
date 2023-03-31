@@ -70,11 +70,6 @@ fn pan(
     mouse_buttons: Res<Input<MouseButton>>,
     mut world_cursor_pos: ResMut<WorldCursorPosition>,
 ) {
-    // TODO fix multi button mouse bug
-    //let left = mouse_buttons.pressed(MouseButton::Left);
-    //let middle = mouse_buttons.pressed(MouseButton::Middle);
-    //let right = mouse_buttons.pressed(MouseButton::Right);
-    //info!("{left}, {middle}, {right}");
     if mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
         let mut camera_transform = camera_query.single_mut();
         for event in world_cursor_moved_events.iter() {
@@ -116,8 +111,6 @@ fn click_piece(
     mut commands: Commands,
 ) {
     for event in mouse_button_events.iter() {
-        // TODO
-        //info!("{event:?}");
         if event.button == MouseButton::Left {
             match event.state {
                 ButtonState::Pressed => {
@@ -167,14 +160,17 @@ fn drag_piece(
     mut world_cursor_moved_events: EventReader<WorldCursorMoved>,
     mut piece_moved_events: EventWriter<PieceMoved>,
     held_piece: Option<ResMut<HeldPiece>>,
+    mouse_buttons: Res<Input<MouseButton>>,
     mut puzzle: ResMut<Puzzle>,
 ) {
     if let Some(HeldPiece(piece_index)) = held_piece.as_deref() {
-        for event in world_cursor_moved_events.iter() {
-            piece_moved_events.send_batch(puzzle.move_piece_rel(
-                &piece_index,
-                Transform::from_translation(event.0.extend(0.0)),
-            ));
+        if !mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
+            for event in world_cursor_moved_events.iter() {
+                piece_moved_events.send_batch(puzzle.move_piece_rel(
+                    &piece_index,
+                    Transform::from_translation(event.0.extend(0.0)),
+                ));
+            }
         }
     }
 }
