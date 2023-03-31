@@ -10,8 +10,7 @@ use crate::Puzzle;
 const TAB_LENGTH_RATIO: f64 = 0.30;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
 const TAB_INNER_SIZE_RATIO: f64 = 0.22;
-const PIECE_OVERSIZE_RATIO: f64 = 0.005;
-pub(crate) const BORDER_SIZE_DENOM: u32 = 10;
+const PIECE_OVERSIZE_DENOM: u32 = 200;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct PieceIndex(pub u8, pub u8);
@@ -241,12 +240,11 @@ impl Piece {
         index: PieceIndex,
         group_index: usize,
         image: &mut image::RgbaImage,
-        border_size: u32,
     ) -> Self {
         let kind = PieceKind::new(index, puzzle.puzzle_width(), puzzle.puzzle_height());
 
         let (sprite, sprite_origin_x, sprite_origin_y) =
-            Piece::cut_sprite(index, puzzle, border_size, image, kind);
+            Piece::cut_sprite(index, puzzle, image, kind);
 
         // TODO
         let padding = 120;
@@ -283,7 +281,6 @@ impl Piece {
     fn cut_sprite(
         index: PieceIndex,
         puzzle: &Puzzle,
-        border_size: u32,
         image: &mut image::RgbaImage,
         kind: PieceKind,
     ) -> (image::RgbaImage, f64, f64) {
@@ -294,16 +291,40 @@ impl Piece {
         let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
         let (north_blank, south_blank, east_blank, west_blank) = kind.blanks();
 
-        let sprite_width = piece_width + tab_width * (east_tab + west_tab) + 2 * border_size;
-        let sprite_height = piece_height + tab_height * (north_tab + south_tab) + 2 * border_size;
+        let oversize = (piece_width.min(piece_height) / PIECE_OVERSIZE_DENOM).max(1);
+        let mut n_oversize = 0;
+        let mut s_oversize = 0;
+        let mut e_oversize = 0;
+        let mut w_oversize = 0;
 
-        let sprite_origin_x: f64 = (border_size + piece_width / 2 + west_tab * tab_width).into();
-        let sprite_origin_y: f64 = (border_size + piece_height / 2 + south_tab * tab_height).into();
+        if north_tab + north_blank > 0 {
+            n_oversize = oversize;
+        }
+
+        if south_tab + south_blank > 0 {
+            s_oversize = oversize;
+        }
+
+        if east_tab + east_blank > 0 {
+            e_oversize = oversize;
+        }
+
+        if west_tab + west_blank > 0 {
+            w_oversize = oversize;
+        }
+
+        let sprite_width =
+            piece_width + tab_width * (east_tab + west_tab) + e_oversize + w_oversize;
+        let sprite_height =
+            piece_height + tab_height * (north_tab + south_tab) + n_oversize + s_oversize;
+
+        let sprite_origin_x: f64 = (piece_width / 2 + west_tab * tab_width + w_oversize).into();
+        let sprite_origin_y: f64 = (piece_height / 2 + south_tab * tab_height + s_oversize).into();
 
         let mut crop = image::imageops::crop(
             image,
-            col as u32 * piece_width - tab_width * west_tab,
-            row as u32 * piece_height - tab_height * north_tab,
+            col as u32 * piece_width - tab_width * west_tab - w_oversize,
+            row as u32 * piece_height - tab_height * north_tab - n_oversize,
             sprite_width,
             sprite_height,
         )
@@ -319,31 +340,14 @@ impl Piece {
             root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
         };
 
-        let oversize = piece_width.min(piece_height) as f64 * PIECE_OVERSIZE_RATIO;
-        let mut n_oversize = 0.0;
-        let mut s_oversize = 0.0;
-        let mut e_oversize = 0.0;
-        let mut w_oversize = 0.0;
-
-        if row > 0 {
-            n_oversize = oversize;
-        }
-
-        if row < puzzle.puzzle_height() - 1 {
-            s_oversize = oversize;
-        }
-
-        if col > 0 {
-            w_oversize = oversize;
-        }
-
-        if col < puzzle.puzzle_width() - 1 {
-            e_oversize = oversize;
-        }
+        let n_oversize = n_oversize as f64;
+        let s_oversize = s_oversize as f64;
+        let e_oversize = e_oversize as f64;
+        let w_oversize = w_oversize as f64;
 
         let mut path_data = usvg::PathData::new();
-        let mut cursor_x = (west_tab * tab_width + border_size) as f64 - w_oversize;
-        let mut cursor_y = (north_tab * tab_height + border_size) as f64 - n_oversize;
+        let mut cursor_x = (west_tab * tab_width) as f64;
+        let mut cursor_y = (north_tab * tab_height) as f64;
 
         // start in northwest corner
         path_data.push_move_to(cursor_x, cursor_y);
