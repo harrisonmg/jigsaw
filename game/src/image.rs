@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use bevy::render::texture::Image as BevyImageAsset;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Image {
     width: u32,
     height: u32,
@@ -37,6 +37,16 @@ impl From<image::RgbaImage> for Image {
     }
 }
 
+impl From<resvg::tiny_skia::Pixmap> for Image {
+    fn from(value: resvg::tiny_skia::Pixmap) -> Self {
+        Self {
+            width: value.width(),
+            height: value.height(),
+            raw: value.take(),
+        }
+    }
+}
+
 impl From<Image> for BevyImageAsset {
     fn from(value: Image) -> Self {
         BevyImageAsset::new(
@@ -50,4 +60,11 @@ impl From<Image> for BevyImageAsset {
             bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
         )
     }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Sprite {
+    pub image: Image,
+    pub origin_x: f64,
+    pub origin_y: f64,
 }

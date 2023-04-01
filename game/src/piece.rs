@@ -5,12 +5,13 @@ use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
 use usvg::NodeExt;
 
-use crate::Puzzle;
+use crate::{image::Sprite, Puzzle};
 
 const TAB_LENGTH_RATIO: f64 = 0.30;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
 const TAB_INNER_SIZE_RATIO: f64 = 0.22;
 const PIECE_OVERSIZE_DENOM: u32 = 200;
+const SHADOW_STROKE_DENOM: f64 = 15.0;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct PieceIndex(pub u8, pub u8);
@@ -227,12 +228,8 @@ impl PieceKind {
 pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
-    sprite: crate::image::Image,
-    sprite_origin_x: f64,
-    sprite_origin_y: f64,
-    //shadow_sprite: crate::image::Image,
-    shadow_origin_x: f64,
-    shadow_origin_y: f64,
+    sprite: Sprite,
+    shadow_sprite: Sprite,
     pub(crate) transform: bevy::prelude::Transform,
     pub(crate) group_index: usize,
 }
@@ -246,8 +243,7 @@ impl Piece {
     ) -> Self {
         let kind = PieceKind::new(index, puzzle.puzzle_width(), puzzle.puzzle_height());
 
-        let (sprite, sprite_origin_x, sprite_origin_y) =
-            Piece::cut_sprite(index, puzzle, image, kind);
+        let (sprite, shadow_sprite) = Piece::cut_sprite(index, puzzle, image, kind);
 
         // TODO
         let padding = 120;
@@ -260,11 +256,8 @@ impl Piece {
         Piece {
             index,
             kind,
-            sprite: sprite.into(),
-            sprite_origin_x,
-            sprite_origin_y,
-            shadow_origin_x: sprite_origin_x,
-            shadow_origin_y: sprite_origin_y,
+            sprite,
+            shadow_sprite,
             transform: bevy::prelude::Transform::from_translation(initial_position),
             group_index,
         }
@@ -288,7 +281,7 @@ impl Piece {
         puzzle: &Puzzle,
         image: &mut image::RgbaImage,
         kind: PieceKind,
-    ) -> (image::RgbaImage, f64, f64) {
+    ) -> (Sprite, Sprite) {
         let PieceIndex(row, col) = index;
         let piece_width = puzzle.piece_width();
         let piece_height = puzzle.piece_height();
@@ -334,16 +327,6 @@ impl Piece {
             sprite_height,
         )
         .to_image();
-
-        let tree_size = usvg::Size::new(sprite_width.into(), sprite_height.into()).unwrap();
-        let tree = usvg::Tree {
-            size: tree_size,
-            view_box: usvg::ViewBox {
-                rect: tree_size.to_rect(0.0, 0.0),
-                aspect: usvg::AspectRatio::default(),
-            },
-            root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
-        };
 
         let n_oversize = n_oversize as f64;
         let s_oversize = s_oversize as f64;
@@ -471,10 +454,21 @@ impl Piece {
 
         rel_line(0.0, w_oversize - ew_corner_seg_size - n_oversize);
 
+        let tree_size = usvg::Size::new(sprite_width.into(), sprite_height.into()).unwrap();
+        let tree = usvg::Tree {
+            size: tree_size,
+            view_box: usvg::ViewBox {
+                rect: tree_size.to_rect(0.0, 0.0),
+                aspect: usvg::AspectRatio::default(),
+            },
+            root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
+        };
+
+        let mut shadow_path_data = path_data.clone();
+
         tree.root.append_kind(usvg::NodeKind::Path(usvg::Path {
-            fill: Some(usvg::Fill::default()), // black
             data: Rc::new(path_data),
-            //rendering_mode: usvg::ShapeRendering::CrispEdges,
+            fill: Some(usvg::Fill::default()), // black
             ..usvg::Path::default()
         }));
 
@@ -490,7 +484,68 @@ impl Piece {
             pixel.channels_mut()[3] = mask.pixel(x, y).unwrap().alpha();
         }
 
-        (crop, sprite_origin_x, sprite_origin_y)
+        let sprite = Sprite {
+            image: crop.into(),
+            origin_x: sprite_origin_x,
+            origin_y: sprite_origin_y,
+        };
+
+        let shadow_stroke_width = f64::from(sprite_width.min(sprite_height)) / SHADOW_STROKE_DENOM;
+
+        let shadow_tree_size = usvg::Size::new(
+            f64::from(sprite_width) + shadow_stroke_width,
+            f64::from(sprite_height) + shadow_stroke_width,
+        )
+        .unwrap();
+
+        let shadow_tree = usvg::Tree {
+            size: shadow_tree_size,
+            view_box: usvg::ViewBox {
+                rect: shadow_tree_size.to_rect(0.0, 0.0),
+                aspect: usvg::AspectRatio::default(),
+            },
+            root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
+        };
+
+        shadow_path_data.transform(usvg::Transform::new_translate(
+            shadow_stroke_width / 2.0,
+            shadow_stroke_width / 2.0,
+        ));
+
+        shadow_tree
+            .root
+            .append_kind(usvg::NodeKind::Path(usvg::Path {
+                data: Rc::new(shadow_path_data),
+                fill: Some(usvg::Fill::default()), // black
+                stroke: Some(usvg::Stroke {
+                    width: usvg::StrokeWidth::new(shadow_stroke_width).unwrap(),
+                    linecap: usvg::LineCap::Round,
+                    linejoin: usvg::LineJoin::Round,
+                    ..usvg::Stroke::default()
+                }),
+                ..usvg::Path::default()
+            }));
+
+        let mut shadow = resvg::tiny_skia::Pixmap::new(
+            sprite_width + shadow_stroke_width as u32,
+            sprite_height + shadow_stroke_width as u32,
+        )
+        .unwrap();
+
+        resvg::render(
+            &shadow_tree,
+            usvg::FitTo::Original,
+            tiny_skia::Transform::default(),
+            shadow.as_mut(),
+        );
+
+        let shadow_sprite = Sprite {
+            image: shadow.into(),
+            origin_x: sprite_origin_x + shadow_stroke_width / 2.0,
+            origin_y: sprite_origin_y + shadow_stroke_width / 2.0,
+        };
+
+        (sprite, shadow_sprite)
     }
 
     pub fn index(&self) -> PieceIndex {
@@ -502,28 +557,27 @@ impl Piece {
     }
 
     pub fn sprite_clone(&self) -> crate::image::Image {
-        self.sprite.clone()
+        self.sprite.image.clone()
     }
 
     pub fn shadow_sprite_clone(&self) -> crate::image::Image {
-        //self.shadow_sprite.clone()
-        self.sprite.clone()
+        self.shadow_sprite.image.clone()
     }
 
     pub fn sprite_origin_x(&self) -> f64 {
-        self.sprite_origin_x
+        self.sprite.origin_x
     }
 
     pub fn sprite_origin_y(&self) -> f64 {
-        self.sprite_origin_y
+        self.sprite.origin_y
     }
 
     pub fn shadow_origin_x(&self) -> f64 {
-        self.shadow_origin_x
+        self.shadow_sprite.origin_x
     }
 
     pub fn shadow_origin_y(&self) -> f64 {
-        self.shadow_origin_y
+        self.shadow_sprite.origin_y
     }
 
     pub fn transform(&self) -> bevy::prelude::Transform {

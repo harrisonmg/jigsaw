@@ -1,7 +1,5 @@
 # TODO
 - frame, group lock (only at client level?), random starting pos
-- outline at low z height
-    - maybe cut another sprite with a thick stroke on the SVG path and make it black?
 - piece tween when you pick up / put down
     - maybe even tween piece movements
         - this would make the snap look real nice
