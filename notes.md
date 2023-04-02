@@ -1,5 +1,4 @@
 # TODO
-- draw locked pieces at low z height
 - random starting pos
 - restrict zoom and camera pan based on piece size
 - restrict piece movement based on camera pan, maybe mouse?

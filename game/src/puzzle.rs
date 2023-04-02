@@ -36,7 +36,7 @@ impl Debug for Puzzle {
 }
 
 impl Puzzle {
-    pub fn new(mut image: RgbaImage, target_piece_count: u16) -> Self {
+    pub fn new(mut image: RgbaImage, target_piece_count: u16, randomize_position: bool) -> Self {
         // compute puzzle width and height based while trying to make pieces as square as possible
         let image_ratio = f64::from(image.width()) / f64::from(image.height());
         let puzzle_height = (f64::from(target_piece_count) / image_ratio).sqrt();
@@ -196,7 +196,7 @@ impl Puzzle {
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
         if self.groups[group_index].locked {
-                      return events;
+            return events;
         }
         self.with_group_mut(group_index, |piece| {
             piece.transform.translation += delta.translation;
@@ -299,14 +299,16 @@ impl Puzzle {
     fn piece_lock_check(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
         use PieceKind::*;
         let kind = PieceKind::new(index, self.puzzle_width, self.puzzle_height);
-        if matches!(kind,
+        if matches!(
+            kind,
             TopLeftCorner
-            | TopRightCornerOdd
-            | TopRightCornerEven
-            | BottomLeftCornerOdd
-            | BottomLeftCornerEven
-            | BottomRightCornerOdd
-            | BottomRightCornerEven) {
+                | TopRightCornerOdd
+                | TopRightCornerEven
+                | BottomLeftCornerOdd
+                | BottomLeftCornerEven
+                | BottomRightCornerOdd
+                | BottomRightCornerEven
+        ) {
             let (piece_x, piece_y) = self
                 .with_piece(index, |piece| {
                     (piece.transform.translation.x, piece.transform.translation.y)
