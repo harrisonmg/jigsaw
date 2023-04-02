@@ -92,9 +92,9 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    pub fn new(index: PieceIndex, puzzle_width: u8, puzzle_height: u8) -> Self {
+    pub fn new(index: &PieceIndex, puzzle_width: u8, puzzle_height: u8) -> Self {
         use PieceKind::*;
-        let PieceIndex(row, col) = index;
+        let PieceIndex(row, col) = *index;
         let even = (row + col) % 2 == 0;
 
         #[allow(clippy::collapsible_else_if)]
@@ -241,7 +241,7 @@ impl Piece {
         group_index: usize,
         image: &mut image::RgbaImage,
     ) -> Self {
-        let kind = PieceKind::new(index, puzzle.puzzle_width(), puzzle.puzzle_height());
+        let kind = PieceKind::new(&index, puzzle.puzzle_width(), puzzle.puzzle_height());
 
         let (sprite, shadow_sprite) = Piece::cut_sprite(index, puzzle, image, kind);
 

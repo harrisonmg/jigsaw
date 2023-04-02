@@ -105,8 +105,8 @@ fn click_piece(
     mut piece_move_events: EventWriter<PieceMoved>,
     mut piece_query: Query<(&mut PieceComponent, &GlobalTransform, Entity)>,
     world_cursor_pos: Res<WorldCursorPosition>,
+    held_piece: Option<ResMut<HeldPiece>>,
     mut puzzle: ResMut<Puzzle>,
-    mut held_piece: Option<ResMut<HeldPiece>>,
     mut piece_stack: ResMut<PieceStack>,
     mut commands: Commands,
 ) {
@@ -128,6 +128,7 @@ fn click_piece(
                             let piece_z = piece_transform.translation().z;
 
                             if piece.within_sprite_bounds(relative_click_pos.truncate())
+                                && !puzzle.piece_group_locked(&piece.index())
                                 && piece_z > candidate_z
                             {
                                 candidate_entity = Some(piece_entity);
@@ -144,10 +145,8 @@ fn click_piece(
                     }
                 }
                 ButtonState::Released => {
-                    if held_piece.is_some() {
-                        let piece_index = held_piece.unwrap().0;
-                        piece_move_events.send_batch(puzzle.make_group_connections(&piece_index));
-                        held_piece = None;
+                    if let Some(HeldPiece(piece_index)) = held_piece.as_deref() {
+                        piece_move_events.send_batch(puzzle.make_group_connections(piece_index));
                         commands.remove_resource::<HeldPiece>();
                     }
                 }
@@ -167,7 +166,7 @@ fn drag_piece(
         if !mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
             for event in world_cursor_moved_events.iter() {
                 piece_moved_events.send_batch(puzzle.move_piece_rel(
-                    &piece_index,
+                    piece_index,
                     Transform::from_translation(event.0.extend(0.0)),
                 ));
             }

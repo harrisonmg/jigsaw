@@ -3,6 +3,8 @@ use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 
 mod better_quad;
+mod board;
+mod colors;
 mod cursor;
 mod disable_context_menu;
 mod loader;
@@ -11,6 +13,7 @@ mod piece;
 mod states;
 mod viewport;
 
+use board::BoardPlugin;
 use cursor::WorldCursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
 use loader::LoaderPlugin;
@@ -31,6 +34,7 @@ fn main() {
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_plugin(LoaderPlugin)
         .add_plugin(PiecePlugin)
+        .add_plugin(BoardPlugin)
         .add_systems(Startup, setup)
         .run();
 }

@@ -8,9 +8,15 @@ use bevy::transform::components::Transform;
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 
-use crate::{Piece, PieceIndex, PieceMoved};
+use crate::{Piece, PieceIndex, PieceKind, PieceMoved};
 
-const CONNECTION_DISTANCE_RATIO: f32 = 0.1;
+pub const CONNECTION_DISTANCE_RATIO: f32 = 0.1;
+
+#[derive(Serialize, Deserialize)]
+struct Group {
+    pieces: Vec<Arc<RwLock<Piece>>>,
+    locked: bool,
+}
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
@@ -20,7 +26,7 @@ pub struct Puzzle {
     piece_width: u32,
     piece_height: u32,
     piece_map: HashMap<PieceIndex, Arc<RwLock<Piece>>>,
-    groups: Vec<Vec<Arc<RwLock<Piece>>>>,
+    groups: Vec<Group>,
 }
 
 impl Debug for Puzzle {
@@ -80,7 +86,10 @@ impl Puzzle {
                 let piece_ref = Arc::new(RwLock::new(piece));
 
                 puzzle.piece_map.insert(index, piece_ref.clone());
-                puzzle.groups.push(vec![piece_ref]);
+                puzzle.groups.push(Group {
+                    pieces: vec![piece_ref],
+                    locked: false,
+                });
             }
         }
 
@@ -140,6 +149,7 @@ impl Puzzle {
         if let Some(group) = group {
             return Some(
                 group
+                    .pieces
                     .iter()
                     .map(|piece_ref| op(&piece_ref.read().unwrap()))
                     .collect(),
@@ -157,6 +167,7 @@ impl Puzzle {
         if let Some(group) = group {
             return Some(
                 group
+                    .pieces
                     .iter()
                     .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
                     .collect(),
@@ -184,6 +195,9 @@ impl Puzzle {
     pub fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoved> {
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
+        if self.groups[group_index].locked {
+                      return events;
+        }
         self.with_group_mut(group_index, |piece| {
             piece.transform.translation += delta.translation;
             piece.transform.rotation *= delta.rotation;
@@ -197,9 +211,15 @@ impl Puzzle {
         let mut piece_indices = Vec::new();
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         self.with_group(group_index, |piece| piece_indices.push(piece.index()));
-        for index in piece_indices {
-            events.extend(self.make_piece_connections(&index));
+
+        for index in &piece_indices {
+            events.extend(self.make_piece_connections(index));
         }
+
+        for index in piece_indices {
+            events.extend(self.piece_lock_check(&index));
+        }
+
         events
     }
 
@@ -233,8 +253,13 @@ impl Puzzle {
                 .with_piece_mut(index, |piece| piece.group_index)
                 .unwrap();
             self.with_group_mut(old_group_index, |piece| piece.group_index = new_group_index);
-            let recruits = self.groups[old_group_index].drain(..).collect::<Vec<_>>();
-            self.groups[new_group_index].extend(recruits);
+            let recruits = self.groups[old_group_index]
+                .pieces
+                .drain(..)
+                .collect::<Vec<_>>();
+            self.groups[new_group_index].pieces.extend(recruits);
+            self.groups[new_group_index].locked =
+                self.groups[new_group_index].locked || self.groups[old_group_index].locked;
 
             if connection_count > 1 {
                 events.extend(self.make_piece_connections(index));
@@ -269,5 +294,77 @@ impl Puzzle {
             .unwrap();
 
         (perfect, distance, *other)
+    }
+
+    fn piece_lock_check(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
+        use PieceKind::*;
+        let kind = PieceKind::new(index, self.puzzle_width, self.puzzle_height);
+        if matches!(kind,
+            TopLeftCorner
+            | TopRightCornerOdd
+            | TopRightCornerEven
+            | BottomLeftCornerOdd
+            | BottomLeftCornerEven
+            | BottomRightCornerOdd
+            | BottomRightCornerEven) {
+            let (piece_x, piece_y) = self
+                .with_piece(index, |piece| {
+                    (piece.transform.translation.x, piece.transform.translation.y)
+                })
+                .unwrap();
+            let half_width = f32::from(self.puzzle_width) * self.piece_width as f32 / 2.0;
+            let half_height = f32::from(self.puzzle_height) * self.piece_height as f32 / 2.0;
+
+            let half_piece_width = self.piece_width as f32 / 2.0;
+            let half_piece_height = self.piece_height as f32 / 2.0;
+
+            let target_x = match kind {
+                TopLeftCorner | BottomLeftCornerOdd | BottomLeftCornerEven => {
+                    -half_width + half_piece_width
+                }
+                TopRightCornerOdd
+                | TopRightCornerEven
+                | BottomRightCornerOdd
+                | BottomRightCornerEven => half_width - half_piece_width,
+                _ => 0.0,
+            };
+
+            let target_y = match kind {
+                TopLeftCorner | TopRightCornerOdd | TopRightCornerEven => {
+                    half_height - half_piece_height
+                }
+                BottomRightCornerOdd
+                | BottomRightCornerEven
+                | BottomLeftCornerOdd
+                | BottomLeftCornerEven => -half_height + half_piece_height,
+                _ => 0.0,
+            };
+
+            let x_dist = (piece_x - target_x).abs();
+            let y_dist = (piece_y - target_y).abs();
+            let square_dist = x_dist * x_dist + y_dist * y_dist;
+            let connection_dist =
+                CONNECTION_DISTANCE_RATIO * self.piece_width.min(self.piece_height) as f32;
+            if square_dist <= connection_dist * connection_dist {
+                let events = self.move_piece_rel(
+                    index,
+                    Transform::from_xyz(target_x - piece_x, target_y - piece_y, 0.0),
+                );
+                self.lock_piece_group(index);
+                return events;
+            }
+        }
+        Vec::new()
+    }
+
+    fn lock_piece_group(&mut self, index: &PieceIndex) {
+        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        self.groups[group_index].locked = true;
+    }
+
+    pub fn piece_group_locked(&self, index: &PieceIndex) -> bool {
+        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        // true
+        self.groups[group_index].locked
     }
 }

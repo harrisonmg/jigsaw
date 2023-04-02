@@ -35,10 +35,10 @@ impl PieceComponent {
 
     pub fn within_sprite_bounds(&self, mut coords: Vec2) -> bool {
         coords += self.sprite_origin;
-        return 0.0 <= coords.x
+        0.0 <= coords.x
             && coords.x <= self.sprite_size.x
             && 0.0 <= coords.y
-            && coords.y <= self.sprite_size.y;
+            && coords.y <= self.sprite_size.y
     }
 }
 
@@ -152,11 +152,7 @@ fn piece_setup(
         let shadow_x_offset = shadow_sprite.width() as f32 / 2.0 - piece.shadow_origin_x() as f32;
         let shadow_y_offset = shadow_sprite.height() as f32 / 2.0 - piece.shadow_origin_y() as f32;
         let shadow = SpriteBundle {
-            transform: Transform::from_xyz(
-                shadow_x_offset,
-                shadow_y_offset,
-                -MIN_PIECE_HEIGHT,
-            ),
+            transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
             texture: image_assets.add(piece.shadow_sprite_clone().into()),
             ..Default::default()
         };
@@ -187,7 +183,6 @@ fn move_piece(
         let (mut transform, mut piece) = piece_query.get_mut(piece_entity).unwrap();
         transform.translation.x = event.x;
         transform.translation.y = event.y;
-        transform.rotation = Quat::from_rotation_z(event.rotation);
         piece_stack.put_on_top(&mut piece, piece_entity);
     }
 }
