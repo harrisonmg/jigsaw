@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
@@ -25,7 +27,6 @@ pub struct PieceComponent {
     index: PieceIndex,
     sprite_size: Vec2,
     sprite_origin: Vec2,
-    pub stack_pos: usize,
 }
 
 impl PieceComponent {
@@ -53,7 +54,6 @@ pub struct PieceBundle {
 impl PieceBundle {
     pub fn new(
         piece: &Piece,
-        stack_pos: usize,
         image_assets: &mut ResMut<Assets<Image>>,
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<PieceMaterial>>,
@@ -71,7 +71,6 @@ impl PieceBundle {
             index: piece.index(),
             sprite_size,
             sprite_origin,
-            stack_pos,
         };
 
         let mut mesh = Mesh::from(BetterQuad::new(sprite_size, sprite_origin));
@@ -119,12 +118,22 @@ impl PieceBundle {
 pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
 
 #[derive(Resource)]
-pub struct PieceStack(pub Vec<Entity>);
+pub struct PieceStack(pub VecDeque<Entity>);
 
 impl PieceStack {
-    pub fn put_on_top(&mut self, piece: &mut PieceComponent, entity: Entity) {
-        piece.stack_pos = self.0.len();
-        self.0.push(entity);
+    fn remove_entity(&mut self, entity: Entity) {
+        self.0
+            .remove(self.0.iter().position(|e| *e == entity).unwrap());
+    }
+
+    pub fn put_on_top(&mut self, entity: Entity) {
+        self.remove_entity(entity);
+        self.0.push_front(entity);
+    }
+
+    pub fn put_on_bottom(&mut self, entity: Entity) {
+        self.remove_entity(entity);
+        self.0.push_back(entity);
     }
 }
 
@@ -140,12 +149,10 @@ fn piece_setup(
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     let mut piece_map = PieceMap(HashMap::new());
-    let mut piece_stack = PieceStack(Vec::new());
+    let mut piece_stack = PieceStack(VecDeque::new());
 
-    let mut i = 0;
     puzzle.with_pieces(|piece| {
-        let piece_bundle =
-            PieceBundle::new(piece, i, &mut image_assets, &mut meshes, &mut materials);
+        let piece_bundle = PieceBundle::new(piece, &mut image_assets, &mut meshes, &mut materials);
         let piece_entity = commands.spawn(piece_bundle).id();
 
         let shadow_sprite = piece.shadow_sprite_clone();
@@ -163,8 +170,7 @@ fn piece_setup(
             .push_children(&[shadow_entity]);
 
         piece_map.0.insert(piece.index(), piece_entity);
-        piece_stack.0.push(piece_entity);
-        i += 1;
+        piece_stack.0.push_front(piece_entity);
     });
 
     commands.insert_resource(piece_map);
@@ -174,39 +180,32 @@ fn piece_setup(
 
 fn move_piece(
     mut piece_moved_events: EventReader<PieceMoved>,
-    mut piece_query: Query<(&mut Transform, &mut PieceComponent)>,
+    mut piece_query: Query<&mut Transform>,
     piece_map: Res<PieceMap>,
+    puzzle: Res<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,
 ) {
     for event in piece_moved_events.iter() {
         let piece_entity = *piece_map.0.get(&event.index).unwrap();
-        let (mut transform, mut piece) = piece_query.get_mut(piece_entity).unwrap();
+        let mut transform = piece_query.get_mut(piece_entity).unwrap();
         transform.translation.x = event.x;
         transform.translation.y = event.y;
-        piece_stack.put_on_top(&mut piece, piece_entity);
+        if puzzle.piece_group_locked(&event.index) {
+            piece_stack.put_on_bottom(piece_entity);
+        } else {
+            piece_stack.put_on_top(piece_entity);
+        }
     }
 }
 
 fn sort_pieces(
-    mut piece_query: Query<(&mut Transform, &mut PieceComponent), With<PieceComponent>>,
-    mut piece_stack: ResMut<PieceStack>,
+    mut piece_query: Query<&mut Transform, With<PieceComponent>>,
+    piece_stack: Res<PieceStack>,
 ) {
     let piece_count = piece_query.iter().len();
     let z_step = (MAX_PIECE_HEIGHT - MIN_PIECE_HEIGHT) / piece_count as f32;
-
-    let mut stack_offset = 0;
-    let mut i = 0;
-    piece_stack.0.retain(|piece_entity| {
-        let (mut transform, mut piece) = piece_query.get_mut(*piece_entity).unwrap();
-        if piece.stack_pos == i {
-            piece.stack_pos -= stack_offset;
-            transform.translation.z = piece.stack_pos as f32 * z_step + MIN_PIECE_HEIGHT;
-            i += 1;
-            true
-        } else {
-            stack_offset += 1;
-            i += 1;
-            false
-        }
-    });
+    for (i, piece_entity) in piece_stack.0.iter().enumerate() {
+        let mut piece_transform = piece_query.get_mut(*piece_entity).unwrap();
+        piece_transform.translation.z = MAX_PIECE_HEIGHT - i as f32 * z_step;
+    }
 }

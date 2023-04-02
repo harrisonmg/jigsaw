@@ -103,7 +103,7 @@ fn zoom(
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut piece_move_events: EventWriter<PieceMoved>,
-    mut piece_query: Query<(&mut PieceComponent, &GlobalTransform, Entity)>,
+    piece_query: Query<(&mut PieceComponent, &GlobalTransform, Entity)>,
     world_cursor_pos: Res<WorldCursorPosition>,
     held_piece: Option<ResMut<HeldPiece>>,
     mut puzzle: ResMut<Puzzle>,
@@ -117,6 +117,7 @@ fn click_piece(
                     if held_piece.is_none() {
                         // prioritize highest z value (piece on top)
                         let mut candidate_entity = None;
+                        let mut candidate_index = None;
                         let mut candidate_z = f32::NEG_INFINITY;
 
                         for (piece, piece_transform, piece_entity) in piece_query.iter() {
@@ -132,14 +133,14 @@ fn click_piece(
                                 && piece_z > candidate_z
                             {
                                 candidate_entity = Some(piece_entity);
+                                candidate_index = Some(piece.index());
                                 candidate_z = piece_z;
                             }
                         }
 
                         if let Some(piece_entity) = candidate_entity {
-                            let (mut piece, _, _) = piece_query.get_mut(piece_entity).unwrap();
-                            commands.insert_resource(HeldPiece(piece.index()));
-                            piece_stack.put_on_top(&mut piece, candidate_entity.unwrap());
+                            piece_stack.put_on_top(piece_entity);
+                            commands.insert_resource(HeldPiece(candidate_index.unwrap()));
                             break;
                         }
                     }
