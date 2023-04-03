@@ -1,15 +1,19 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::Duration};
 
 use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
 
+use bevy_tweening::{lens::TransformScaleLens, Animator, EaseFunction, Tween};
 use game::{Piece, PieceIndex, PieceMoved, Puzzle};
 
 use crate::{better_quad::BetterQuad, material::PieceMaterial, states::AppState};
 
 const MIN_PIECE_HEIGHT: f32 = 500.0;
 const MAX_PIECE_HEIGHT: f32 = 900.0;
+
+const PIECE_TWEEN_TIME: f32 = 0.25;
+const PIECE_TWEEN_SCALE: f32 = 1.10;
 
 pub struct PiecePlugin;
 
@@ -46,6 +50,7 @@ impl PieceComponent {
 #[derive(Bundle)]
 pub struct PieceBundle {
     pub piece: PieceComponent,
+    pub animator: Animator<Transform>,
 
     #[bundle]
     mesh_bundle: MaterialMesh2dBundle<PieceMaterial>,
@@ -102,8 +107,18 @@ impl PieceBundle {
         let mut transform = piece.transform();
         transform.translation.z = MIN_PIECE_HEIGHT;
 
+        let tween = Tween::new(
+            EaseFunction::QuarticInOut,
+            Duration::from_secs_f32(PIECE_TWEEN_TIME),
+            TransformScaleLens {
+                start: Vec3::ONE,
+                end: Vec3::ONE * PIECE_TWEEN_SCALE,
+            },
+        );
+
         Self {
             piece: piece_component,
+            animator: Animator::new(tween),
             mesh_bundle: MaterialMesh2dBundle {
                 mesh: mesh_handle.into(),
                 material,
