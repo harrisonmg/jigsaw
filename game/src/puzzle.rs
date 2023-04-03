@@ -4,13 +4,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bevy::transform::components::Transform;
+use bevy::{prelude::Vec3, transform::components::Transform};
 use image::RgbaImage;
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{Piece, PieceIndex, PieceKind, PieceMoved};
 
-pub const CONNECTION_DISTANCE_RATIO: f32 = 0.1;
+pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
 
 #[derive(Serialize, Deserialize)]
 struct Group {
@@ -79,10 +80,35 @@ impl Puzzle {
             groups,
         };
 
+        let mut rng = rand::thread_rng();
+        let puzzle_width_len = u32::from(puzzle_width) * piece_width;
+        let puzzle_height_len = u32::from(puzzle_height) * piece_height;
+        let piece_big_side_len = piece_width.max(piece_height) as f32;
+        let short_side_len = puzzle_width_len.min(puzzle_height_len) as f32;
+        let long_side_len = puzzle_width_len.max(puzzle_height_len) as f32;
+
         for row in 0..puzzle_height {
             for col in 0..puzzle_width {
                 let index = PieceIndex(row, col);
-                let piece = Piece::new(&puzzle, index, puzzle.groups.len(), &mut image);
+                let mut piece = Piece::new(&puzzle, index, puzzle.groups.len(), &mut image);
+
+                if randomize_position {
+                    let big_pos = (long_side_len + 2.0 * short_side_len) * (rng.gen::<f32>() - 0.5);
+                    let mut small_pos = 3.0 * short_side_len * (rng.gen::<f32>() - 0.5);
+                    if big_pos.abs() < long_side_len / 2.0 + piece_big_side_len
+                        && small_pos.abs() < short_side_len / 2.0 + piece_big_side_len
+                    {
+                        small_pos =
+                            (small_pos.abs() * 2.0 + short_side_len / 2.0 + piece_big_side_len)
+                                * small_pos.signum();
+                    }
+                    piece.transform.translation = if puzzle_width_len >= puzzle_height_len {
+                        Vec3::new(big_pos, small_pos, 0.0)
+                    } else {
+                        Vec3::new(small_pos, big_pos, 0.0)
+                    };
+                }
+
                 let piece_ref = Arc::new(RwLock::new(piece));
 
                 puzzle.piece_map.insert(index, piece_ref.clone());

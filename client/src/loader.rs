@@ -52,7 +52,7 @@ fn spawn_load_task(mut commands: Commands) {
         let image = image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
             .unwrap()
             .to_rgba8();
-        tx.send(Puzzle::new(image, 9, true)).unwrap();
+        tx.send(Puzzle::new(image, 1000, true)).unwrap();
     });
     commands.insert_resource(loader);
 }
