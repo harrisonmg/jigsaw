@@ -22,8 +22,8 @@ struct Group {
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
     image: crate::image::Image,
-    puzzle_width: u8,
-    puzzle_height: u8,
+    num_cols: u8,
+    num_rows: u8,
     piece_width: u32,
     piece_height: u32,
     piece_map: HashMap<PieceIndex, Arc<RwLock<Piece>>>,
@@ -40,19 +40,19 @@ impl Puzzle {
     pub fn new(mut image: RgbaImage, target_piece_count: u16, randomize_position: bool) -> Self {
         // compute puzzle width and height based while trying to make pieces as square as possible
         let image_ratio = f64::from(image.width()) / f64::from(image.height());
-        let puzzle_height = (f64::from(target_piece_count) / image_ratio).sqrt();
-        let puzzle_width = image_ratio * puzzle_height;
+        let num_rows = (f64::from(target_piece_count) / image_ratio).sqrt();
+        let num_cols = image_ratio * num_rows;
 
-        let puzzle_height = puzzle_height.round().max(2.0) as u8;
-        let puzzle_width = puzzle_width.round().max(2.0) as u8;
+        let num_rows = num_rows.round().max(2.0) as u8;
+        let num_cols = num_cols.round().max(2.0) as u8;
 
         // make sure piece sizes are even so tabs are centered.
-        let mut piece_width = image.width() / u32::from(puzzle_width);
+        let mut piece_width = image.width() / u32::from(num_cols);
         if piece_width % 2 == 1 {
             piece_width -= 1;
         }
 
-        let mut piece_height = image.height() / u32::from(puzzle_height);
+        let mut piece_height = image.height() / u32::from(num_rows);
         if piece_height % 2 == 1 {
             piece_height -= 1;
         }
@@ -62,8 +62,8 @@ impl Puzzle {
             &mut image,
             0,
             0,
-            u32::from(puzzle_width) * piece_width,
-            u32::from(puzzle_height) * piece_height,
+            u32::from(num_cols) * piece_width,
+            u32::from(num_rows) * piece_height,
         )
         .to_image();
 
@@ -72,8 +72,8 @@ impl Puzzle {
 
         let mut puzzle = Self {
             image: crate::image::Image::empty(),
-            puzzle_width,
-            puzzle_height,
+            num_cols,
+            num_rows,
             piece_width,
             piece_height,
             piece_map,
@@ -81,14 +81,14 @@ impl Puzzle {
         };
 
         let mut rng = rand::thread_rng();
-        let puzzle_width_len = u32::from(puzzle_width) * piece_width;
-        let puzzle_height_len = u32::from(puzzle_height) * piece_height;
+        let puzzle_width = puzzle.width() as f32;
+        let puzzle_height = puzzle.height() as f32;
         let piece_big_side_len = piece_width.max(piece_height) as f32;
-        let short_side_len = puzzle_width_len.min(puzzle_height_len) as f32;
-        let long_side_len = puzzle_width_len.max(puzzle_height_len) as f32;
+        let short_side_len = puzzle_width.min(puzzle_height);
+        let long_side_len = puzzle_width.max(puzzle_height);
 
-        for row in 0..puzzle_height {
-            for col in 0..puzzle_width {
+        for row in 0..num_rows {
+            for col in 0..num_cols {
                 let index = PieceIndex(row, col);
                 let mut piece = Piece::new(&puzzle, index, puzzle.groups.len(), &mut image);
 
@@ -102,7 +102,7 @@ impl Puzzle {
                             (small_pos.abs() * 2.0 + short_side_len / 2.0 + piece_big_side_len)
                                 * small_pos.signum();
                     }
-                    piece.transform.translation = if puzzle_width_len >= puzzle_height_len {
+                    piece.transform.translation = if puzzle_width >= puzzle_height {
                         Vec3::new(big_pos, small_pos, 0.0)
                     } else {
                         Vec3::new(small_pos, big_pos, 0.0)
@@ -127,12 +127,12 @@ impl Puzzle {
         self.image.clone()
     }
 
-    pub fn puzzle_width(&self) -> u8 {
-        self.puzzle_width
+    pub fn num_cols(&self) -> u8 {
+        self.num_cols
     }
 
-    pub fn puzzle_height(&self) -> u8 {
-        self.puzzle_height
+    pub fn num_rows(&self) -> u8 {
+        self.num_rows
     }
 
     pub fn with_piece<T>(&self, index: &PieceIndex, op: impl FnOnce(&Piece) -> T) -> Option<T> {
@@ -210,20 +210,41 @@ impl Puzzle {
         self.piece_height
     }
 
-    pub fn move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoved> {
+    pub fn width(&self) -> u32 {
+        u32::from(self.num_cols) * self.piece_width
+    }
+
+    pub fn height(&self) -> u32 {
+        u32::from(self.num_rows) * self.piece_height
+    }
+
+    pub fn try_move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoved> {
+        if self.piece_group_locked(index) {
+            Vec::new()
+        } else {
+            self.move_piece(index, transform)
+        }
+    }
+
+    fn move_piece(&mut self, index: &PieceIndex, mut transform: Transform) -> Vec<PieceMoved> {
         let piece_transform = self.with_piece(index, |piece| piece.transform).unwrap();
         let inverse_piece_transform =
             Transform::from_matrix(piece_transform.compute_matrix().inverse());
+
+        let clamp_half_size = self.width().min(self.height()) as f32 * 3.0;
+        transform.translation = transform.translation.clamp(
+            Vec3::new(-clamp_half_size, -clamp_half_size, f32::NEG_INFINITY),
+            Vec3::new(clamp_half_size, clamp_half_size, f32::INFINITY),
+        );
+
         let delta = transform.mul_transform(inverse_piece_transform);
         self.move_piece_rel(index, delta)
     }
 
-    pub fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoved> {
+    fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoved> {
         let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
         let mut events = Vec::new();
-        if self.groups[group_index].locked {
-            return events;
-        }
+
         self.with_group_mut(group_index, |piece| {
             piece.transform.translation += delta.translation;
             piece.transform.rotation *= delta.rotation;
@@ -240,18 +261,21 @@ impl Puzzle {
 
         for index in &piece_indices {
             events.extend(self.make_piece_connections(index));
-        }
-
-        for index in piece_indices {
-            events.extend(self.piece_lock_check(&index));
+            events.extend(self.piece_lock_check(index));
         }
 
         events
     }
 
     fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
+        let mut events = Vec::new();
+
+        if self.piece_group_locked(index) {
+            return events;
+        }
+
         let neighbors: Vec<_> = index
-            .neighbors(self.puzzle_width, self.puzzle_height)
+            .neighbors(self.num_cols, self.num_rows)
             .into_iter()
             .filter(|other| {
                 self.with_piece(index, |piece| piece.group_index)
@@ -270,7 +294,7 @@ impl Puzzle {
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(closest) = closest {
-            let mut events = self.move_piece(index, closest.0);
+            events.extend(self.move_piece(index, closest.0));
 
             let new_group_index = self
                 .with_piece(&closest.2, |piece| piece.group_index)
@@ -290,9 +314,8 @@ impl Puzzle {
             if connection_count > 1 {
                 events.extend(self.make_piece_connections(index));
             }
-            return events;
         }
-        Vec::new()
+        events
     }
 
     fn single_connection_check(
@@ -324,7 +347,7 @@ impl Puzzle {
 
     fn piece_lock_check(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
         use PieceKind::*;
-        let kind = PieceKind::new(index, self.puzzle_width, self.puzzle_height);
+        let kind = PieceKind::new(index, self.num_cols, self.num_rows);
         if matches!(
             kind,
             TopLeftCorner
@@ -340,8 +363,8 @@ impl Puzzle {
                     (piece.transform.translation.x, piece.transform.translation.y)
                 })
                 .unwrap();
-            let half_width = f32::from(self.puzzle_width) * self.piece_width as f32 / 2.0;
-            let half_height = f32::from(self.puzzle_height) * self.piece_height as f32 / 2.0;
+            let half_width = f32::from(self.num_cols) * self.piece_width as f32 / 2.0;
+            let half_height = f32::from(self.num_rows) * self.piece_height as f32 / 2.0;
 
             let half_piece_width = self.piece_width as f32 / 2.0;
             let half_piece_height = self.piece_height as f32 / 2.0;

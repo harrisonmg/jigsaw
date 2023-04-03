@@ -17,11 +17,11 @@ const SHADOW_STROKE_DENOM: f64 = 15.0;
 pub struct PieceIndex(pub u8, pub u8);
 
 impl PieceIndex {
-    pub fn neighbors(self, puzzle_width: u8, puzzle_height: u8) -> Vec<Self> {
+    pub fn neighbors(self, num_cols: u8, num_rows: u8) -> Vec<Self> {
         [
             self.north_neighbor(),
-            self.south_neighbor(puzzle_height),
-            self.east_neighbor(puzzle_width),
+            self.south_neighbor(num_rows),
+            self.east_neighbor(num_cols),
             self.west_neighbor(),
         ]
         .into_iter()
@@ -37,17 +37,17 @@ impl PieceIndex {
         None
     }
 
-    pub fn south_neighbor(self, puzzle_height: u8) -> Option<Self> {
+    pub fn south_neighbor(self, num_rows: u8) -> Option<Self> {
         let PieceIndex(row, col) = self;
-        if row < puzzle_height - 1 {
+        if row < num_rows - 1 {
             return Some(PieceIndex(row + 1, col));
         }
         None
     }
 
-    pub fn east_neighbor(self, puzzle_width: u8) -> Option<Self> {
+    pub fn east_neighbor(self, num_cols: u8) -> Option<Self> {
         let PieceIndex(row, col) = self;
-        if col < puzzle_width - 1 {
+        if col < num_cols - 1 {
             return Some(PieceIndex(row, col + 1));
         }
         None
@@ -92,7 +92,7 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    pub fn new(index: &PieceIndex, puzzle_width: u8, puzzle_height: u8) -> Self {
+    pub fn new(index: &PieceIndex, num_cols: u8, num_rows: u8) -> Self {
         use PieceKind::*;
         let PieceIndex(row, col) = *index;
         let even = (row + col) % 2 == 0;
@@ -101,7 +101,7 @@ impl PieceKind {
         if row == 0 {
             if col == 0 {
                 TopLeftCorner
-            } else if col == puzzle_width - 1 {
+            } else if col == num_cols - 1 {
                 if even {
                     TopRightCornerEven
                 } else {
@@ -114,14 +114,14 @@ impl PieceKind {
                     TopEdgeOdd
                 }
             }
-        } else if row == puzzle_height - 1 {
+        } else if row == num_rows - 1 {
             if col == 0 {
                 if even {
                     BottomLeftCornerEven
                 } else {
                     BottomLeftCornerOdd
                 }
-            } else if col == puzzle_width - 1 {
+            } else if col == num_cols - 1 {
                 if even {
                     BottomRightCornerEven
                 } else {
@@ -141,7 +141,7 @@ impl PieceKind {
                 } else {
                     LeftEdgeOdd
                 }
-            } else if col == puzzle_width - 1 {
+            } else if col == num_cols - 1 {
                 if even {
                     RightEdgeEven
                 } else {
@@ -241,7 +241,7 @@ impl Piece {
         group_index: usize,
         image: &mut image::RgbaImage,
     ) -> Self {
-        let kind = PieceKind::new(&index, puzzle.puzzle_width(), puzzle.puzzle_height());
+        let kind = PieceKind::new(&index, puzzle.num_rows(), puzzle.num_cols());
 
         let (sprite, shadow_sprite) = Piece::cut_sprite(index, puzzle, image, kind);
 

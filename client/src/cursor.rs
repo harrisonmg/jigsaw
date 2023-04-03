@@ -117,37 +117,42 @@ fn click_piece(
                     if held_piece.is_none() {
                         // prioritize highest z value (piece on top)
                         let mut candidate_entity = None;
-                        let mut candidate_index = None;
+                        let mut candidate_piece = None;
                         let mut candidate_z = f32::NEG_INFINITY;
 
                         for (piece, piece_transform, piece_entity) in piece_query.iter() {
                             let inverse_transform =
                                 Transform::from_matrix(piece_transform.compute_matrix().inverse());
-                            let relative_click_pos =
-                                inverse_transform.transform_point(world_cursor_pos.0.extend(0.0));
+                            let relative_click_pos = inverse_transform
+                                .transform_point(world_cursor_pos.0.extend(0.0))
+                                .truncate();
 
                             let piece_z = piece_transform.translation().z;
 
-                            if piece.within_sprite_bounds(relative_click_pos.truncate())
+                            if piece.within_sprite_bounds(relative_click_pos)
                                 && !puzzle.piece_group_locked(&piece.index())
                                 && piece_z > candidate_z
                             {
                                 candidate_entity = Some(piece_entity);
-                                candidate_index = Some(piece.index());
+                                candidate_piece = Some(HeldPiece {
+                                    index: piece.index(),
+                                    cursor_offset: relative_click_pos,
+                                });
                                 candidate_z = piece_z;
                             }
                         }
 
                         if let Some(piece_entity) = candidate_entity {
                             piece_stack.put_on_top(piece_entity);
-                            commands.insert_resource(HeldPiece(candidate_index.unwrap()));
+                            commands.insert_resource(candidate_piece.unwrap());
                             break;
                         }
                     }
                 }
                 ButtonState::Released => {
-                    if let Some(HeldPiece(piece_index)) = held_piece.as_deref() {
-                        piece_move_events.send_batch(puzzle.make_group_connections(piece_index));
+                    if let Some(held_piece) = held_piece.as_deref() {
+                        piece_move_events
+                            .send_batch(puzzle.make_group_connections(&held_piece.index));
                         commands.remove_resource::<HeldPiece>();
                     }
                 }
@@ -157,20 +162,21 @@ fn click_piece(
 }
 
 fn drag_piece(
-    mut world_cursor_moved_events: EventReader<WorldCursorMoved>,
     mut piece_moved_events: EventWriter<PieceMoved>,
     held_piece: Option<ResMut<HeldPiece>>,
     mouse_buttons: Res<Input<MouseButton>>,
+    world_cursor: Res<WorldCursorPosition>,
     mut puzzle: ResMut<Puzzle>,
 ) {
-    if let Some(HeldPiece(piece_index)) = held_piece.as_deref() {
+    if let Some(held_piece) = held_piece.as_deref() {
         if !mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
-            for event in world_cursor_moved_events.iter() {
-                piece_moved_events.send_batch(puzzle.move_piece_rel(
-                    piece_index,
-                    Transform::from_translation(event.0.extend(0.0)),
-                ));
-            }
+            let piece_z = puzzle
+                .with_piece(&held_piece.index, |piece| piece.transform().translation.z)
+                .unwrap();
+            let piece_pos = Transform::from_translation(
+                (world_cursor.0 - held_piece.cursor_offset).extend(piece_z),
+            );
+            piece_moved_events.send_batch(puzzle.try_move_piece(&held_piece.index, piece_pos));
         }
     }
 }

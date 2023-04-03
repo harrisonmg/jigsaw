@@ -1,7 +1,4 @@
 # TODO
-- default camera pos
-- restrict zoom and camera pan based on piece size
-- restrict piece movement based on camera pan, maybe mouse?
 - piece tween when you pick up / put down
     - maybe even tween piece movements
         - this would make the snap look real nice

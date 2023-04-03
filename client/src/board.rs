@@ -22,10 +22,7 @@ fn board_setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let puzzle_size = Vec2::new(
-        f32::from(puzzle.puzzle_width()) * puzzle.piece_width() as f32,
-        f32::from(puzzle.puzzle_height()) * puzzle.piece_width() as f32,
-    );
+    let puzzle_size = Vec2::new(puzzle.width() as f32, puzzle.height() as f32);
     let mesh = meshes.add(Mesh::from(shape::Quad::new(puzzle_size))).into();
     let material = materials.add(ColorMaterial::from(LIGHT));
 

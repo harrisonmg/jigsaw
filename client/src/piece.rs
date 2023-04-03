@@ -138,15 +138,18 @@ impl PieceStack {
 }
 
 #[derive(Resource)]
-pub struct HeldPiece(pub PieceIndex);
+pub struct HeldPiece {
+    pub index: PieceIndex,
+    pub cursor_offset: Vec2,
+}
 
 fn piece_setup(
-    mut commands: Commands,
     puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PieceMaterial>>,
     mut next_state: ResMut<NextState<AppState>>,
+    mut commands: Commands,
 ) {
     let mut piece_map = PieceMap(HashMap::new());
     let mut piece_stack = PieceStack(VecDeque::new());
