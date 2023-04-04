@@ -4,7 +4,7 @@ use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
 
-use bevy_tweening::{lens::TransformScaleLens, Animator, EaseFunction, Tween};
+use bevy_tweening::{lens::TransformScaleLens, Animator, AnimatorState, EaseFunction, Tween};
 use game::{Piece, PieceIndex, PieceMoved, Puzzle};
 
 use crate::{better_quad::BetterQuad, material::PieceMaterial, states::AppState};
@@ -112,13 +112,17 @@ impl PieceBundle {
             Duration::from_secs_f32(PIECE_TWEEN_TIME),
             TransformScaleLens {
                 start: Vec3::ONE,
-                end: Vec3::ONE * PIECE_TWEEN_SCALE,
+                end: Vec3::new(PIECE_TWEEN_SCALE, PIECE_TWEEN_SCALE, 1.0),
             },
-        );
+        )
+        .with_repeat_strategy(bevy_tweening::RepeatStrategy::MirroredRepeat)
+        .with_repeat_count(2);
+
+        let animator = Animator::new(tween).with_state(AnimatorState::Paused);
 
         Self {
             piece: piece_component,
-            animator: Animator::new(tween),
+            animator,
             mesh_bundle: MaterialMesh2dBundle {
                 mesh: mesh_handle.into(),
                 material,

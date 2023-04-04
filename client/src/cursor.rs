@@ -5,10 +5,11 @@ use bevy::{
     },
     prelude::*,
 };
+use bevy_tweening::{Animator, AnimatorState};
 use game::{PieceMoved, Puzzle};
 
 use crate::{
-    piece::{HeldPiece, PieceComponent, PieceStack},
+    piece::{HeldPiece, PieceComponent, PieceMap, PieceStack},
     states::AppState,
 };
 
@@ -103,8 +104,14 @@ fn zoom(
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut piece_move_events: EventWriter<PieceMoved>,
-    piece_query: Query<(&mut PieceComponent, &GlobalTransform, Entity)>,
+    mut piece_query: Query<(
+        &PieceComponent,
+        &GlobalTransform,
+        Entity,
+        &mut Animator<Transform>,
+    )>,
     world_cursor_pos: Res<WorldCursorPosition>,
+    piece_map: Res<PieceMap>,
     held_piece: Option<ResMut<HeldPiece>>,
     mut puzzle: ResMut<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,
@@ -120,7 +127,7 @@ fn click_piece(
                         let mut candidate_piece = None;
                         let mut candidate_z = f32::NEG_INFINITY;
 
-                        for (piece, piece_transform, piece_entity) in piece_query.iter() {
+                        for (piece, piece_transform, piece_entity, _) in piece_query.iter() {
                             let inverse_transform =
                                 Transform::from_matrix(piece_transform.compute_matrix().inverse());
                             let relative_click_pos = inverse_transform
@@ -144,6 +151,9 @@ fn click_piece(
 
                         if let Some(piece_entity) = candidate_entity {
                             piece_stack.put_on_top(piece_entity);
+                            let (_, _, _, mut animator) =
+                                piece_query.get_mut(piece_entity).unwrap();
+                            animator.state = AnimatorState::Playing;
                             commands.insert_resource(candidate_piece.unwrap());
                             break;
                         }
@@ -153,6 +163,9 @@ fn click_piece(
                     if let Some(held_piece) = held_piece.as_deref() {
                         piece_move_events
                             .send_batch(puzzle.make_group_connections(&held_piece.index));
+                        let piece_entity = *piece_map.0.get(&held_piece.index).unwrap();
+                        let (_, _, _, mut animator) = piece_query.get_mut(piece_entity).unwrap();
+                        animator.state = AnimatorState::Playing;
                         commands.remove_resource::<HeldPiece>();
                     }
                 }

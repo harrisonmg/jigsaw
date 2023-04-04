@@ -13,6 +13,7 @@ mod piece;
 mod states;
 mod viewport;
 
+use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
 use cursor::WorldCursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
@@ -32,6 +33,7 @@ fn main() {
         .add_plugin(FullViewportPlugin)
         .add_plugin(DisableContextMenuPlugin)
         .add_plugin(WorldCursorPlugin)
+        .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_plugin(LoaderPlugin)
         .add_plugin(PiecePlugin)
