@@ -1,19 +1,19 @@
-use std::{collections::VecDeque, time::Duration};
+use std::collections::VecDeque;
 
 use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
 
-use bevy_tweening::{lens::TransformScaleLens, Animator, AnimatorState, EaseFunction, Tween};
+use bevy_tweening::Animator;
 use game::{Piece, PieceIndex, PieceMoved, Puzzle};
 
-use crate::{better_quad::BetterQuad, material::PieceMaterial, states::AppState};
+use crate::{
+    animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
+    states::AppState,
+};
 
 const MIN_PIECE_HEIGHT: f32 = 500.0;
 const MAX_PIECE_HEIGHT: f32 = 900.0;
-
-const PIECE_TWEEN_TIME: f32 = 0.25;
-const PIECE_TWEEN_SCALE: f32 = 1.10;
 
 pub struct PiecePlugin;
 
@@ -106,29 +106,17 @@ impl PieceBundle {
 
         let mut transform = piece.transform();
         transform.translation.z = MIN_PIECE_HEIGHT;
-
-        let tween = Tween::new(
-            EaseFunction::QuarticInOut,
-            Duration::from_secs_f32(PIECE_TWEEN_TIME),
-            TransformScaleLens {
-                start: Vec3::ONE,
-                end: Vec3::new(PIECE_TWEEN_SCALE, PIECE_TWEEN_SCALE, 1.0),
-            },
-        )
-        .with_repeat_strategy(bevy_tweening::RepeatStrategy::MirroredRepeat)
-        .with_repeat_count(2);
-
-        let animator = Animator::new(tween).with_state(AnimatorState::Paused);
+        let mesh_bundle = MaterialMesh2dBundle {
+            mesh: mesh_handle.into(),
+            material,
+            transform,
+            ..Default::default()
+        };
 
         Self {
             piece: piece_component,
-            animator,
-            mesh_bundle: MaterialMesh2dBundle {
-                mesh: mesh_handle.into(),
-                material,
-                transform,
-                ..Default::default()
-            },
+            animator: new_piece_animator(),
+            mesh_bundle,
         }
     }
 }

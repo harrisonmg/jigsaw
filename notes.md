@@ -1,12 +1,6 @@
 # TODO
-- piece tween when you pick up / put down
-    - forward and reverse tweens
-        - util fn for creation
-        - each tween starts at 1 - progress of the other tween
-    - maybe even tween piece movements
-        - this would make the snap look real nice
-        - plus would allow lowering the piece-move server event frequency
-        - disable when holding the piece
+- space to center camera
+- help modal
 
 # architecture
 - server

@@ -5,10 +5,11 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_tweening::{Animator, AnimatorState};
+use bevy_tweening::Animator;
 use game::{PieceMoved, Puzzle};
 
 use crate::{
+    animation::{grow, shrink},
     piece::{HeldPiece, PieceComponent, PieceMap, PieceStack},
     states::AppState,
 };
@@ -151,9 +152,11 @@ fn click_piece(
 
                         if let Some(piece_entity) = candidate_entity {
                             piece_stack.put_on_top(piece_entity);
+
                             let (_, _, _, mut animator) =
                                 piece_query.get_mut(piece_entity).unwrap();
-                            animator.state = AnimatorState::Playing;
+                            grow(&mut animator);
+
                             commands.insert_resource(candidate_piece.unwrap());
                             break;
                         }
@@ -163,9 +166,11 @@ fn click_piece(
                     if let Some(held_piece) = held_piece.as_deref() {
                         piece_move_events
                             .send_batch(puzzle.make_group_connections(&held_piece.index));
+
                         let piece_entity = *piece_map.0.get(&held_piece.index).unwrap();
                         let (_, _, _, mut animator) = piece_query.get_mut(piece_entity).unwrap();
-                        animator.state = AnimatorState::Playing;
+                        shrink(&mut animator);
+
                         commands.remove_resource::<HeldPiece>();
                     }
                 }

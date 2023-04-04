@@ -2,6 +2,7 @@ use bevy::diagnostic::LogDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 
+mod animation;
 mod better_quad;
 mod board;
 mod colors;
