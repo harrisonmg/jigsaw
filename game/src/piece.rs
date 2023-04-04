@@ -241,12 +241,11 @@ impl Piece {
         group_index: usize,
         image: &mut image::RgbaImage,
     ) -> Self {
-        let kind = PieceKind::new(&index, puzzle.num_rows(), puzzle.num_cols());
+        let kind = PieceKind::new(&index, puzzle.num_cols(), puzzle.num_rows());
 
         let (sprite, shadow_sprite) = Piece::cut_sprite(index, puzzle, image, kind);
 
-        // TODO
-        let padding = 120;
+        let padding = puzzle.piece_width().max(puzzle.piece_height()) / 2;
         let initial_position = bevy::prelude::Vec3::new(
             index.1 as f32 * (puzzle.piece_height() + padding) as f32,
             -(index.0 as f32 * (puzzle.piece_width() + padding) as f32),
