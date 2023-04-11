@@ -8,6 +8,7 @@ mod board;
 mod colors;
 mod cursor;
 mod disable_context_menu;
+mod help;
 mod loader;
 mod material;
 mod piece;
@@ -19,6 +20,7 @@ use board::BoardPlugin;
 use cursor::WorldCursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
 use game::Puzzle;
+use help::HelpPlugin;
 use loader::LoaderPlugin;
 use material::PieceMaterial;
 use piece::PiecePlugin;
@@ -39,7 +41,9 @@ fn main() {
         .add_plugin(LoaderPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)
+        .add_plugin(HelpPlugin)
         .add_systems(OnEnter(AppState::Setup), setup)
+        .add_systems(Update, center_camera.run_if(in_state(AppState::Playing)))
         .run();
 }
 
@@ -50,4 +54,15 @@ fn setup(puzzle: Res<Puzzle>, mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
     camera.projection.scale = min_zoom.min_element();
     commands.spawn(camera);
+}
+
+fn center_camera(
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+    input: Res<Input<KeyCode>>,
+) {
+    if input.pressed(KeyCode::Space) {
+        let mut transform = camera_query.get_single_mut().unwrap();
+        transform.translation.x = 0.0;
+        transform.translation.y = 0.0;
+    }
 }

@@ -1,5 +1,4 @@
 # TODO
-- space to center camera
 - help modal
 
 # architecture
