@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    colors::{CLEAR, DARK},
+    colors::{CLEAR, DARK, LIGHT, LIGHTER},
     states::AppState,
 };
 
@@ -21,9 +21,11 @@ struct HelpButton;
 struct HelpText;
 
 const HELP_SYMBOL: &str = "?";
-const HELP_TEXT: &str = "Left click and drag to move a piece.\n\n\
-                        Right or middle click and drag to pan the camera.\n\n\
-                        Press space to center the camera.";
+const HELP_TEXT: &str = "• Left click and drag to move a piece\n\
+                        • Right or middle click and drag to pan\n\
+                        • Scroll to zoom\n\
+                        • Press space to center the camera\n\n\
+                        Made by Harrison Gieraltowski - harrisonmg.net";
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
@@ -42,10 +44,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     style: Style {
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
+                        margin: UiRect::all(Val::Px(10.0)),
+                        padding: UiRect::all(Val::Px(10.0)),
                         // TODO padding
                         ..default()
                     },
-                    background_color: CLEAR.into(),
+                    background_color: DARK.into(),
                     ..default()
                 })
                 .insert(HelpButton)
@@ -55,8 +59,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             HELP_SYMBOL,
                             TextStyle {
                                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                font_size: 40.0,
-                                color: DARK,
+                                font_size: 25.0,
+                                color: LIGHTER,
                             },
                         ))
                         .insert(HelpText);
