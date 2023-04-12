@@ -3,3 +3,16 @@ name = "server"
 version = "0.1.0"
 authors = ["harrisonmg"]
 edition = "2021"
+
+[dependencies]
+game = { path = "../game" }
+
+anyhow = "1.0.69"
+image = "0.24.5"
+reqwest = "0.11.15"
+tokio = { version = "1", features = ["full"] }
+warp = "0.3.4"
+futures-util = "0.3.28"
+rmp-serde = "1.1.1"
+serde = { version = "1.0", features = ["derive", "rc"] }
+futures = "0.3.28"

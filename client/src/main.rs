@@ -11,9 +11,11 @@ mod disable_context_menu;
 mod help;
 mod loader;
 mod material;
+mod network;
 mod piece;
 mod states;
 mod viewport;
+mod worker;
 
 use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
@@ -23,6 +25,7 @@ use game::Puzzle;
 use help::HelpPlugin;
 use loader::LoaderPlugin;
 use material::PieceMaterial;
+use network::NetworkPlugin;
 use piece::PiecePlugin;
 use states::AppState;
 use viewport::{get_viewport_size, FullViewportPlugin};
@@ -39,6 +42,7 @@ fn main() {
         .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_plugin(LoaderPlugin)
+        .add_plugin(NetworkPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)
         .add_plugin(HelpPlugin)

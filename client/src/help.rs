@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    colors::{CLEAR, DARK, LIGHT, LIGHTER},
+    colors::{DARK, LIGHTER},
     states::AppState,
 };
 

@@ -5,7 +5,7 @@ members = [
   #"admin",
   "client",
   "game",
-  #"server",
+  "server",
 ]
 
 # profiles for bevy
