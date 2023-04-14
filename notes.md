@@ -1,4 +1,5 @@
 # TODO
+- integrate automod and readonly
 - server loads a new game
 - serialize puzzle and send over websocket on connection
 - client connects ot websocket and loads puzzle
