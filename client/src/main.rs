@@ -29,7 +29,7 @@ fn main() {
         .add_plugin(WorldCursorPlugin)
         .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
-        .add_plugin(LoaderPlugin)
+        //.add_plugin(LoaderPlugin)
         .add_plugin(NetworkPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)

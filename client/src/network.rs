@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use futures_util::{SinkExt, StreamExt};
+use game::Puzzle;
 use ws_stream_wasm::{WsMessage, WsMeta};
 
 use crate::states::AppState;
@@ -23,13 +24,14 @@ type NetworkIO = Worker<(), String>;
 fn spawn_network_io_task(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let io = NetworkIO::spawn(thread_pool, |_, tx| async move {
-        let (_, ws_io) = WsMeta::connect("ws://127.0.0.1:3030/echo", None)
+        let (_, ws_io) = WsMeta::connect("ws://127.0.0.1:3030/client", None)
             .await
             .unwrap();
-        let (mut ws_tx, mut ws_rx) = ws_io.split();
-        ws_tx.send(WsMessage::Text("yo".into())).await.unwrap();
-        if let Some(WsMessage::Text(resp)) = ws_rx.next().await {
-            tx.send(resp).unwrap();
+        let (mut _ws_tx, mut ws_rx) = ws_io.split();
+        loop {
+            if let Some(WsMessage::Text(msg)) = ws_rx.next().await {
+                tx.send(msg).unwrap();
+            }
         }
     });
     commands.insert_resource(io);
@@ -40,13 +42,9 @@ fn handle_network_io_task(
     mut io: ResMut<NetworkIO>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
-    if let Ok(resp) = io.output.try_recv() {
-        info!("{resp:?}");
+    while let Ok(msg) = io.output.try_recv() {
+        let puzzle = Puzzle::from(msg.as_str());
+        commands.insert_resource(puzzle);
+        next_state.set(AppState::Setup);
     }
-
-    //if let Ok(puzzle) = io.output.try_recv() {
-    //    commands.insert_resource(puzzle);
-    //    commands.remove_resource::<PuzzleNetwork>();
-    //    next_state.set(AppState::Setup);
-    //}
 }

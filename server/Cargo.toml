@@ -8,12 +8,10 @@ edition = "2021"
 game = { path = "../game" }
 
 anyhow = "1.0.69"
+automod = "1.0.8"
 image = "0.24.5"
 reqwest = "0.11.15"
 tokio = { version = "1", features = ["full"] }
 warp = "0.3.4"
 futures-util = "0.3.28"
-rmp-serde = "1.1.1"
-serde = { version = "1.0", features = ["derive", "rc"] }
 futures = "0.3.28"
-automod = "1.0.8"

@@ -419,3 +419,15 @@ impl Puzzle {
         self.groups[group_index].locked
     }
 }
+
+impl From<&str> for Puzzle {
+    fn from(value: &str) -> Self {
+        serde_json::from_str(value).unwrap()
+    }
+}
+
+impl From<&Puzzle> for String {
+    fn from(value: &Puzzle) -> Self {
+        serde_json::to_string(value).unwrap()
+    }
+}
