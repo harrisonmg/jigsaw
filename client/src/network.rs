@@ -32,6 +32,8 @@ fn spawn_network_io_task(mut commands: Commands) {
             if let Some(WsMessage::Text(msg)) = ws_rx.next().await {
                 tx.send(msg).unwrap();
             }
+            // TODO
+            break;
         }
     });
     commands.insert_resource(io);
@@ -43,6 +45,7 @@ fn handle_network_io_task(
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     while let Ok(msg) = io.output.try_recv() {
+        // TODO something is going wrong here
         let puzzle = Puzzle::from(msg.as_str());
         commands.insert_resource(puzzle);
         next_state.set(AppState::Setup);

@@ -8,6 +8,7 @@ use bevy::{prelude::Vec3, transform::components::Transform};
 use image::RgbaImage;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use serde_json_any_key::*;
 
 use crate::{Piece, PieceIndex, PieceKind, PieceMoved};
 
@@ -26,7 +27,10 @@ pub struct Puzzle {
     num_rows: u8,
     piece_width: u32,
     piece_height: u32,
+
+    #[serde(with = "any_key_map")]
     piece_map: HashMap<PieceIndex, Arc<RwLock<Piece>>>,
+
     groups: Vec<Group>,
 }
 
