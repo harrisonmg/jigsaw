@@ -85,7 +85,7 @@ fn zoom(
     mut scroll_events: EventReader<MouseWheel>,
     mut projection_query: Query<&mut OrthographicProjection>,
     mut camera_query: Query<&mut Transform, With<Camera>>,
-    world_cursor_pos: ResMut<WorldCursorPosition>,
+    world_cursor_pos: Res<WorldCursorPosition>,
 ) {
     let mut camera_transform = camera_query.single_mut();
     let mut projection = projection_query.single_mut();

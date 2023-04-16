@@ -5,6 +5,8 @@ use warp::{ws::Message, Filter};
 
 use game::Puzzle;
 
+automod::dir!("src/");
+
 #[tokio::main]
 async fn main() {
     let response = reqwest::get("https://m.media-amazon.com/images/W/IMAGERENDERING_521856-T1/images/I/71tNdtNw70L._UF1000,1000_QL80_.jpg");

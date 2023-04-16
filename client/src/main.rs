@@ -2,26 +2,14 @@ use bevy::diagnostic::LogDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 
-mod animation;
-mod better_quad;
-mod board;
-mod colors;
-mod cursor;
-mod disable_context_menu;
-mod help;
-mod loader;
-mod material;
-mod network;
-mod piece;
-mod states;
-mod viewport;
-mod worker;
+use game::Puzzle;
+
+automod::dir!("src/");
 
 use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
 use cursor::WorldCursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
-use game::Puzzle;
 use help::HelpPlugin;
 use loader::LoaderPlugin;
 use material::PieceMaterial;
