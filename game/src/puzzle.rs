@@ -1,10 +1,6 @@
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    sync::{Arc, RwLock},
-};
+use std::fmt::Debug;
 
-use bevy::{prelude::Vec3, transform::components::Transform};
+use bevy::{prelude::Vec3, transform::components::Transform, utils::HashMap};
 use image::RgbaImage;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -16,7 +12,7 @@ pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
 
 #[derive(Serialize, Deserialize)]
 struct Group {
-    pieces: Vec<Arc<RwLock<Piece>>>,
+    piece_indices: Vec<PieceIndex>,
     locked: bool,
 }
 
@@ -29,14 +25,19 @@ pub struct Puzzle {
     piece_height: u32,
 
     #[serde(with = "any_key_map")]
-    piece_map: HashMap<PieceIndex, Arc<RwLock<Piece>>>,
+    piece_map: HashMap<PieceIndex, Piece>,
 
     groups: Vec<Group>,
 }
 
 impl Debug for Puzzle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Puzzle").finish()
+        f.debug_struct("Puzzle")
+            .field("num_cols", &self.num_cols)
+            .field("num_rows", &self.num_rows)
+            .field("piece_width", &self.piece_width)
+            .field("piece_height", &self.piece_height)
+            .finish()
     }
 }
 
@@ -113,11 +114,9 @@ impl Puzzle {
                     };
                 }
 
-                let piece_ref = Arc::new(RwLock::new(piece));
-
-                puzzle.piece_map.insert(index, piece_ref.clone());
+                puzzle.piece_map.insert(index, piece);
                 puzzle.groups.push(Group {
-                    pieces: vec![piece_ref],
+                    piece_indices: vec![index],
                     locked: false,
                 });
             }
@@ -139,71 +138,39 @@ impl Puzzle {
         self.num_rows
     }
 
-    pub fn with_piece<T>(&self, index: &PieceIndex, op: impl FnOnce(&Piece) -> T) -> Option<T> {
-        self.piece_map
-            .get(index)
-            .map(|piece_ref| op(&piece_ref.read().unwrap()))
+    pub fn piece(&self, index: &PieceIndex) -> Option<&Piece> {
+        self.piece_map.get(index)
     }
 
-    fn with_piece_mut<T>(
+    fn piece_mut(&mut self, index: &PieceIndex) -> Option<&mut Piece> {
+        self.piece_map.get_mut(index)
+    }
+
+    pub fn with_pieces<T>(&self, op: impl FnMut(&Piece) -> T) -> Vec<T> {
+        self.piece_map.values().map(op).collect()
+    }
+
+    pub fn with_group<T>(&self, group_index: usize, op: impl FnMut(&Piece) -> T) -> Option<Vec<T>> {
+        self.groups.get(group_index).map(|group| {
+            group
+                .piece_indices
+                .iter()
+                .map(|index| self.piece(index).unwrap())
+                .map(op)
+                .collect()
+        })
+    }
+
+    fn with_group_mut<T>(
         &mut self,
-        index: &PieceIndex,
-        op: impl FnOnce(&mut Piece) -> T,
-    ) -> Option<T> {
-        self.piece_map
-            .get_mut(index)
-            .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
-    }
-
-    pub fn with_pieces<T>(&self, mut op: impl FnMut(&Piece) -> T) -> Vec<T> {
-        self.piece_map
-            .values()
-            .map(|piece_ref| op(&piece_ref.read().unwrap()))
-            .collect()
-    }
-
-    #[allow(unused)]
-    fn with_pieces_mut<T>(&mut self, mut op: impl FnMut(&mut Piece) -> T) -> Vec<T> {
-        self.piece_map
-            .values_mut()
-            .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
-            .collect()
-    }
-
-    pub fn with_group<T>(
-        &self,
-        group_index: usize,
-        mut op: impl FnMut(&Piece) -> T,
-    ) -> Option<Vec<T>> {
-        let group = self.groups.get(group_index);
-        if let Some(group) = group {
-            return Some(
-                group
-                    .pieces
-                    .iter()
-                    .map(|piece_ref| op(&piece_ref.read().unwrap()))
-                    .collect(),
-            );
-        }
-        None
-    }
-
-    pub fn with_group_mut<T>(
-        &self,
         group_index: usize,
         mut op: impl FnMut(&mut Piece) -> T,
-    ) -> Option<Vec<T>> {
-        let group = self.groups.get(group_index);
-        if let Some(group) = group {
-            return Some(
-                group
-                    .pieces
-                    .iter()
-                    .map(|piece_ref| op(&mut piece_ref.write().unwrap()))
-                    .collect(),
-            );
-        }
-        None
+    ) -> Vec<T> {
+        let piece_indices = self.groups.get(group_index).unwrap().piece_indices.clone();
+        piece_indices
+            .iter()
+            .map(|index| op(self.piece_mut(index).unwrap()))
+            .collect()
     }
 
     pub fn piece_width(&self) -> u32 {
@@ -231,7 +198,7 @@ impl Puzzle {
     }
 
     fn move_piece(&mut self, index: &PieceIndex, mut transform: Transform) -> Vec<PieceMoved> {
-        let piece_transform = self.with_piece(index, |piece| piece.transform).unwrap();
+        let piece_transform = self.piece(index).unwrap().transform;
         let inverse_piece_transform =
             Transform::from_matrix(piece_transform.compute_matrix().inverse());
 
@@ -246,7 +213,7 @@ impl Puzzle {
     }
 
     fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoved> {
-        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        let group_index = self.piece(index).unwrap().group_index;
         let mut events = Vec::new();
 
         self.with_group_mut(group_index, |piece| {
@@ -260,8 +227,8 @@ impl Puzzle {
     pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
         let mut events = Vec::new();
         let mut piece_indices = Vec::new();
-        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
-        self.with_group(group_index, |piece| piece_indices.push(piece.index()));
+        let group_index = self.piece(index).unwrap().group_index;
+        self.with_group_mut(group_index, |piece| piece_indices.push(piece.index()));
 
         for index in &piece_indices {
             events.extend(self.make_piece_connections(index));
@@ -282,8 +249,7 @@ impl Puzzle {
             .neighbors(self.num_cols, self.num_rows)
             .into_iter()
             .filter(|other| {
-                self.with_piece(index, |piece| piece.group_index)
-                    != self.with_piece(other, |piece| piece.group_index)
+                self.piece(index).unwrap().group_index != self.piece(other).unwrap().group_index
             })
             .collect();
 
@@ -300,18 +266,14 @@ impl Puzzle {
         if let Some(closest) = closest {
             events.extend(self.move_piece(index, closest.0));
 
-            let new_group_index = self
-                .with_piece(&closest.2, |piece| piece.group_index)
-                .unwrap();
-            let old_group_index = self
-                .with_piece_mut(index, |piece| piece.group_index)
-                .unwrap();
+            let new_group_index = self.piece(&closest.2).unwrap().group_index;
+            let old_group_index = self.piece(index).unwrap().group_index;
             self.with_group_mut(old_group_index, |piece| piece.group_index = new_group_index);
             let recruits = self.groups[old_group_index]
-                .pieces
+                .piece_indices
                 .drain(..)
                 .collect::<Vec<_>>();
-            self.groups[new_group_index].pieces.extend(recruits);
+            self.groups[new_group_index].piece_indices.extend(recruits);
             self.groups[new_group_index].locked =
                 self.groups[new_group_index].locked || self.groups[old_group_index].locked;
 
@@ -327,24 +289,21 @@ impl Puzzle {
         index: &PieceIndex,
         other: &PieceIndex,
     ) -> (Transform, f32, PieceIndex) {
-        let perfect = self
-            .with_piece(other, |piece| {
-                let x = piece.transform.translation.x
-                    + (index.1 as f32 - other.1 as f32) * self.piece_width as f32;
-                let y = piece.transform.translation.y
-                    + (other.0 as f32 - index.0 as f32) * self.piece_height as f32;
-                Transform::from_xyz(x, y, 0.0)
-            })
-            .unwrap();
+        let piece = self.piece(index).unwrap();
+        let other_piece = self.piece(other).unwrap();
 
-        let distance = self
-            .with_piece(index, |piece| {
-                perfect
-                    .translation
-                    .truncate()
-                    .distance(piece.transform.translation.truncate())
-            })
-            .unwrap();
+        let perfect = Transform::from_xyz(
+            other_piece.transform.translation.x
+                + (index.1 as f32 - other.1 as f32) * self.piece_width as f32,
+            other_piece.transform.translation.y
+                + (other.0 as f32 - index.0 as f32) * self.piece_height as f32,
+            0.0,
+        );
+
+        let distance = perfect
+            .translation
+            .truncate()
+            .distance(piece.transform.translation.truncate());
 
         (perfect, distance, *other)
     }
@@ -362,11 +321,8 @@ impl Puzzle {
                 | BottomRightCornerOdd
                 | BottomRightCornerEven
         ) {
-            let (piece_x, piece_y) = self
-                .with_piece(index, |piece| {
-                    (piece.transform.translation.x, piece.transform.translation.y)
-                })
-                .unwrap();
+            let translation = self.piece(index).unwrap().transform.translation;
+
             let half_width = f32::from(self.num_cols) * self.piece_width as f32 / 2.0;
             let half_height = f32::from(self.num_rows) * self.piece_height as f32 / 2.0;
 
@@ -395,15 +351,15 @@ impl Puzzle {
                 _ => 0.0,
             };
 
-            let x_dist = (piece_x - target_x).abs();
-            let y_dist = (piece_y - target_y).abs();
+            let x_dist = (translation.x - target_x).abs();
+            let y_dist = (translation.y - target_y).abs();
             let square_dist = x_dist * x_dist + y_dist * y_dist;
             let connection_dist =
                 CONNECTION_DISTANCE_RATIO * self.piece_width.min(self.piece_height) as f32;
             if square_dist <= connection_dist * connection_dist {
                 let events = self.move_piece_rel(
                     index,
-                    Transform::from_xyz(target_x - piece_x, target_y - piece_y, 0.0),
+                    Transform::from_xyz(target_x - translation.x, target_y - translation.y, 0.0),
                 );
                 self.lock_piece_group(index);
                 return events;
@@ -413,13 +369,12 @@ impl Puzzle {
     }
 
     fn lock_piece_group(&mut self, index: &PieceIndex) {
-        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
+        let group_index = self.piece(index).unwrap().group_index;
         self.groups[group_index].locked = true;
     }
 
     pub fn piece_group_locked(&self, index: &PieceIndex) -> bool {
-        let group_index = self.with_piece(index, |piece| piece.group_index).unwrap();
-        // true
+        let group_index = self.piece(index).unwrap().group_index;
         self.groups[group_index].locked
     }
 }

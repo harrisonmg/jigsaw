@@ -11,10 +11,9 @@ use board::BoardPlugin;
 use cursor::WorldCursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
 use help::HelpPlugin;
-use loader::LoaderPlugin;
 use material::PieceMaterial;
 use network::NetworkPlugin;
-use piece::PiecePlugin;
+use pieces::PiecePlugin;
 use states::AppState;
 use viewport::{get_viewport_size, FullViewportPlugin};
 
@@ -22,14 +21,12 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(LogDiagnosticsPlugin::default())
-        //.add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_state::<AppState>()
         .add_plugin(FullViewportPlugin)
         .add_plugin(DisableContextMenuPlugin)
         .add_plugin(WorldCursorPlugin)
         .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
-        //.add_plugin(LoaderPlugin)
         .add_plugin(NetworkPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)

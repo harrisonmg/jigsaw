@@ -10,13 +10,13 @@ use game::{PieceMoved, Puzzle};
 
 use crate::{
     animation::{grow, shrink},
-    piece::{HeldPiece, PieceComponent, PieceMap, PieceStack},
+    pieces::{HeldPiece, PieceComponent, PieceMap, PieceStack},
     states::AppState,
 };
 
 const ZOOM_FACTOR: f32 = 0.003;
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct WorldCursorPosition(pub Vec2);
 
 pub struct WorldCursorMoved(pub Vec2);
@@ -189,8 +189,11 @@ fn drag_piece(
     if let Some(held_piece) = held_piece.as_deref() {
         if !mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
             let piece_z = puzzle
-                .with_piece(&held_piece.index, |piece| piece.transform().translation.z)
-                .unwrap();
+                .piece(&held_piece.index)
+                .unwrap()
+                .transform()
+                .translation
+                .z;
             let piece_pos = Transform::from_translation(
                 (world_cursor.0 - held_piece.cursor_offset).extend(piece_z),
             );
