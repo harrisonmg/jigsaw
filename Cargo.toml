@@ -1,12 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = [
-  #"admin",
-  "client",
-  "game",
-  "server",
-]
+members = ["crates/*"]
 
 # profiles for bevy
 [profile.dev]

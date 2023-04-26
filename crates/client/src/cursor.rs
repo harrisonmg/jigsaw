@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_tweening::Animator;
-use game::{PieceMoved, Puzzle};
+use game::{PieceMovedEvent, Puzzle};
 
 use crate::{
     animation::{grow, shrink},
@@ -104,7 +104,7 @@ fn zoom(
 #[allow(clippy::too_many_arguments)]
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
-    mut piece_move_events: EventWriter<PieceMoved>,
+    mut piece_move_events: EventWriter<PieceMovedEvent>,
     mut piece_query: Query<(
         &PieceComponent,
         &GlobalTransform,
@@ -164,8 +164,9 @@ fn click_piece(
                 }
                 ButtonState::Released => {
                     if let Some(held_piece) = held_piece.as_deref() {
-                        piece_move_events
-                            .send_batch(puzzle.make_group_connections(&held_piece.index));
+                        // TODO trigger server connection check
+                        //piece_move_events
+                        //    .send_batch(puzzle.make_group_connections(&held_piece.index));
 
                         let piece_entity = *piece_map.0.get(&held_piece.index).unwrap();
                         let (_, _, _, mut animator) = piece_query.get_mut(piece_entity).unwrap();
@@ -180,7 +181,7 @@ fn click_piece(
 }
 
 fn drag_piece(
-    mut piece_moved_events: EventWriter<PieceMoved>,
+    mut piece_moved_events: EventWriter<PieceMovedEvent>,
     held_piece: Option<ResMut<HeldPiece>>,
     mouse_buttons: Res<Input<MouseButton>>,
     world_cursor: Res<WorldCursorPosition>,

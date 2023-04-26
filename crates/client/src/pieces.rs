@@ -5,7 +5,7 @@ use bevy::{
 };
 
 use bevy_tweening::Animator;
-use game::{Piece, PieceIndex, PieceMoved, Puzzle};
+use game::{Piece, PieceIndex, PieceMovedEvent, Puzzle};
 
 use crate::{
     animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
@@ -19,7 +19,7 @@ pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<PieceMoved>()
+        app.add_event::<PieceMovedEvent>()
             .add_systems(OnEnter(AppState::Setup), piece_setup)
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
             .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
@@ -189,7 +189,7 @@ fn piece_setup(
 }
 
 fn move_piece(
-    mut piece_moved_events: EventReader<PieceMoved>,
+    mut piece_moved_events: EventReader<PieceMovedEvent>,
     mut piece_query: Query<&mut Transform>,
     piece_map: Res<PieceMap>,
     puzzle: Res<Puzzle>,

@@ -6,7 +6,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
 
-use crate::{Piece, PieceIndex, PieceKind, PieceMoved};
+use crate::{Piece, PieceIndex, PieceKind, PieceMovedEvent};
 
 pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
 
@@ -189,7 +189,11 @@ impl Puzzle {
         u32::from(self.num_rows) * self.piece_height
     }
 
-    pub fn try_move_piece(&mut self, index: &PieceIndex, transform: Transform) -> Vec<PieceMoved> {
+    pub fn try_move_piece(
+        &mut self,
+        index: &PieceIndex,
+        transform: Transform,
+    ) -> Vec<PieceMovedEvent> {
         if self.piece_group_locked(index) {
             Vec::new()
         } else {
@@ -197,7 +201,7 @@ impl Puzzle {
         }
     }
 
-    fn move_piece(&mut self, index: &PieceIndex, mut transform: Transform) -> Vec<PieceMoved> {
+    fn move_piece(&mut self, index: &PieceIndex, mut transform: Transform) -> Vec<PieceMovedEvent> {
         let piece_transform = self.piece(index).unwrap().transform;
         let inverse_piece_transform =
             Transform::from_matrix(piece_transform.compute_matrix().inverse());
@@ -212,19 +216,19 @@ impl Puzzle {
         self.move_piece_rel(index, delta)
     }
 
-    fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMoved> {
+    fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMovedEvent> {
         let group_index = self.piece(index).unwrap().group_index;
         let mut events = Vec::new();
 
         self.with_group_mut(group_index, |piece| {
             piece.transform.translation += delta.translation;
             piece.transform.rotation *= delta.rotation;
-            events.push(PieceMoved::from_piece(piece));
+            events.push(PieceMovedEvent::from_piece(piece));
         });
         events
     }
 
-    pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
+    pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
         let mut events = Vec::new();
         let mut piece_indices = Vec::new();
         let group_index = self.piece(index).unwrap().group_index;
@@ -238,7 +242,7 @@ impl Puzzle {
         events
     }
 
-    fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
+    fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
         let mut events = Vec::new();
 
         if self.piece_group_locked(index) {
@@ -308,7 +312,7 @@ impl Puzzle {
         (perfect, distance, *other)
     }
 
-    fn piece_lock_check(&mut self, index: &PieceIndex) -> Vec<PieceMoved> {
+    fn piece_lock_check(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
         use PieceKind::*;
         let kind = PieceKind::new(index, self.num_cols, self.num_rows);
         if matches!(
