@@ -104,7 +104,6 @@ fn zoom(
 #[allow(clippy::too_many_arguments)]
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
-    mut piece_move_events: EventWriter<PieceMovedEvent>,
     mut piece_query: Query<(
         &PieceComponent,
         &GlobalTransform,
@@ -114,7 +113,7 @@ fn click_piece(
     world_cursor_pos: Res<WorldCursorPosition>,
     piece_map: Res<PieceMap>,
     held_piece: Option<ResMut<HeldPiece>>,
-    mut puzzle: ResMut<Puzzle>,
+    puzzle: ResMut<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,
     mut commands: Commands,
 ) {

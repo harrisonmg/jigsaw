@@ -1,8 +1,5 @@
 # TODO
 
-- steps
-    -
-
 - server holds multiple connections
     - for each connection
         - send puzzle
@@ -21,11 +18,12 @@
     - cursors linked to client id
 
 - events
+    - player connected
     - piece pick up
     - piece put down
     - move piece
     - move cursor
-    - connection
+    - piece connection
         - server checks connection on piece put down
         - sends resulting piece movements, then sends connection event with piece index
         - client checks connection but does not forward movements - there should be no change anyway

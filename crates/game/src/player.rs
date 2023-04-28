@@ -6,7 +6,7 @@ use crate::PieceIndex;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Player {
-    pub client_id: Uuid,
+    //pub client_id: Uuid,
     pub held_piece: Option<PieceIndex>,
     //pub cursor: Cursor,
 }
