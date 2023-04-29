@@ -6,7 +6,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
 
-use crate::{Piece, PieceIndex, PieceKind, PieceMovedEvent};
+use crate::{AnyGameEvent, Piece, PieceIndex, PieceKind, PieceMovedEvent};
 
 pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
 
@@ -126,6 +126,14 @@ impl Puzzle {
         puzzle
     }
 
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
+    pub fn deserialize(value: &str) -> Self {
+        serde_json::from_str(value).unwrap()
+    }
+
     pub fn image(&self) -> crate::image::Image {
         self.image.clone()
     }
@@ -189,41 +197,44 @@ impl Puzzle {
         u32::from(self.num_rows) * self.piece_height
     }
 
-    pub fn try_move_piece(
-        &mut self,
-        index: &PieceIndex,
-        transform: Transform,
-    ) -> Vec<PieceMovedEvent> {
+    pub fn try_move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMovedEvent> {
         if self.piece_group_locked(index) {
             Vec::new()
         } else {
-            self.move_piece(index, transform)
+            self.move_piece(index, x, y)
         }
     }
 
-    fn move_piece(&mut self, index: &PieceIndex, mut transform: Transform) -> Vec<PieceMovedEvent> {
+    fn move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMovedEvent> {
         let piece_transform = self.piece(index).unwrap().transform;
         let inverse_piece_transform =
             Transform::from_matrix(piece_transform.compute_matrix().inverse());
 
+        let mut target_transform = Transform::from_xyz(x, y, piece_transform.translation.z);
+
         let clamp_half_size = self.width().min(self.height()) as f32 * 3.0;
-        transform.translation = transform.translation.clamp(
+        target_transform.translation = target_transform.translation.clamp(
             Vec3::new(-clamp_half_size, -clamp_half_size, f32::NEG_INFINITY),
             Vec3::new(clamp_half_size, clamp_half_size, f32::INFINITY),
         );
 
-        let delta = transform.mul_transform(inverse_piece_transform);
+        let delta = target_transform.mul_transform(inverse_piece_transform);
         self.move_piece_rel(index, delta)
     }
 
     fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMovedEvent> {
-        let group_index = self.piece(index).unwrap().group_index;
         let mut events = Vec::new();
+
+        if delta == Transform::IDENTITY {
+            return events;
+        }
+
+        let group_index = self.piece(index).unwrap().group_index;
 
         self.with_group_mut(group_index, |piece| {
             piece.transform.translation += delta.translation;
             piece.transform.rotation *= delta.rotation;
-            events.push(PieceMovedEvent::from_piece(piece));
+            events.push(PieceMovedEvent::from(&*piece));
         });
         events
     }
@@ -268,7 +279,9 @@ impl Puzzle {
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(closest) = closest {
-            events.extend(self.move_piece(index, closest.0));
+            let closest_x = closest.0.translation.x;
+            let closest_y = closest.0.translation.y;
+            events.extend(self.move_piece(index, closest_x, closest_y));
 
             let new_group_index = self.piece(&closest.2).unwrap().group_index;
             let old_group_index = self.piece(index).unwrap().group_index;
@@ -381,16 +394,20 @@ impl Puzzle {
         let group_index = self.piece(index).unwrap().group_index;
         self.groups[group_index].locked
     }
-}
 
-impl From<&str> for Puzzle {
-    fn from(value: &str) -> Self {
-        serde_json::from_str(value).unwrap()
-    }
-}
-
-impl From<&Puzzle> for String {
-    fn from(value: &Puzzle) -> Self {
-        serde_json::to_string(value).unwrap()
+    pub fn apply_event(&mut self, event: AnyGameEvent) -> Vec<AnyGameEvent> {
+        use AnyGameEvent::*;
+        match event {
+            PieceMoved(event) => self
+                .try_move_piece(&event.index, event.x, event.y)
+                .into_iter()
+                .map(|e| PieceMoved(e))
+                .collect(),
+            PiecePickedUp(event) => Vec::new(),
+            PiecePutDown(event) => Vec::new(),
+            PieceConnected(event) => Vec::new(),
+            PlayerConnected(event) => Vec::new(),
+            CursorMoved(event) => Vec::new(),
+        }
     }
 }

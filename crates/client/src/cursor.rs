@@ -113,7 +113,7 @@ fn click_piece(
     world_cursor_pos: Res<WorldCursorPosition>,
     piece_map: Res<PieceMap>,
     held_piece: Option<ResMut<HeldPiece>>,
-    puzzle: ResMut<Puzzle>,
+    puzzle: Res<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,
     mut commands: Commands,
 ) {
@@ -188,16 +188,12 @@ fn drag_piece(
 ) {
     if let Some(held_piece) = held_piece.as_deref() {
         if !mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
-            let piece_z = puzzle
-                .piece(&held_piece.index)
-                .unwrap()
-                .transform()
-                .translation
-                .z;
-            let piece_pos = Transform::from_translation(
-                (world_cursor.0 - held_piece.cursor_offset).extend(piece_z),
-            );
-            piece_moved_events.send_batch(puzzle.try_move_piece(&held_piece.index, piece_pos));
+            let target = world_cursor.0 - held_piece.cursor_offset;
+            piece_moved_events.send_batch(puzzle.try_move_piece(
+                &held_piece.index,
+                target.x,
+                target.y,
+            ));
         }
     }
 }

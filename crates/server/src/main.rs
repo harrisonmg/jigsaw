@@ -8,7 +8,7 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-use game::Puzzle;
+use game::{AnyGameEvent, Puzzle};
 
 //automod::dir!("src/");
 
@@ -42,6 +42,27 @@ async fn ws_handler(
 }
 
 async fn client_handler(ws: WebSocket, puzzle: Arc<RwLock<Puzzle>>) {
-    let (mut tx, _rx) = ws.split();
-    tx.send(Message::text(&*puzzle.read().await)).await.unwrap();
+    let (mut tx, mut rx) = ws.split();
+
+    tx.send(Message::text(&*puzzle.read().await.serialize()))
+        .await
+        .unwrap();
+
+    while let Some(result) = rx.next().await {
+        let msg = match result {
+            Ok(msg) => msg,
+            Err(_) => break,
+        };
+
+        if msg.is_text() {
+            let event = AnyGameEvent::deserialize(msg.to_str().unwrap());
+            println!("{:?}", event);
+            let _ = puzzle.write().await.apply_event(event);
+            // TODO send resulting events to all clients that don't have a matching ID
+        } else {
+            println!("{msg:?}");
+        }
+    }
+
+    println!("client disconnected");
 }

@@ -46,7 +46,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         align_items: AlignItems::Center,
                         margin: UiRect::all(Val::Px(10.0)),
                         padding: UiRect::all(Val::Px(10.0)),
-                        // TODO padding
                         ..default()
                     },
                     background_color: DARK.into(),
@@ -76,10 +75,7 @@ fn hover_help(
     for interaction in &interaction_query {
         match interaction {
             Interaction::None => text.sections[0].value = String::from(HELP_SYMBOL),
-            Interaction::Hovered => {
-                text.sections[0].value = String::from(HELP_TEXT);
-                // TODO text color
-            }
+            Interaction::Hovered => text.sections[0].value = String::from(HELP_TEXT),
             _ => (),
         }
     }

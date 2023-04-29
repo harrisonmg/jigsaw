@@ -1,12 +1,14 @@
 # TODO
 
+- throttle move piece messages?
+
 - server holds multiple connections
     - for each connection
         - send puzzle
         - mpsc event sink
         - spmc event source
 
-- server doesn't send echo any client events
+- server doesn't echo any client events
     - add client id to event in server to avoid this
     - connection movements are clientless so they do get sent
 
