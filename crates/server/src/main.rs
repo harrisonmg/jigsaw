@@ -87,6 +87,8 @@ async fn client_handler(
     mut event_rx: Receiver<ServerGameEvent>,
 ) {
     let client_id = Uuid::new_v4();
+    println!("Client {client_id} connected");
+
     let (mut ws_tx, mut ws_rx) = ws.split();
 
     // first, send the puzzle
@@ -113,17 +115,17 @@ async fn client_handler(
                 println!("{msg:?}");
             }
         }
-        println!("client {client_id} disconnected");
+        println!("Client {client_id} disconnected");
     };
 
     // forward broadcasted events to client
     let client_tx_handler = async move {
         while let Ok(event) = event_rx.recv().await {
-            // don't echo client events unless they're piece connected events
+            // don't echo client events unless they're piece connection events
             // since those are always handled server-side first
             // to prevent non-deterministic connection logic due to rounding errors
             if event.client_id != client_id
-                || matches!(event.event, AnyGameEvent::PieceConnected(_))
+                || matches!(event.event, AnyGameEvent::PieceConnection(_))
             {
                 #[allow(clippy::collapsible_if)]
                 if ws_tx

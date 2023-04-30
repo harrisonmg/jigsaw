@@ -5,10 +5,15 @@ use bevy::{
 };
 
 use bevy_tweening::Animator;
-use game::{Piece, PieceIndex, PieceMovedEvent, Puzzle};
+use game::{
+    Piece, PieceConnectionEvent, PieceIndex, PieceMovedEvent, PiecePickedUpEvent,
+    PiecePutDownEvent, Puzzle,
+};
 
 use crate::{
-    animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
+    animation::{new_piece_animator, piece_pick_up_grow, piece_put_down_shrink},
+    better_quad::BetterQuad,
+    material::PieceMaterial,
     states::AppState,
 };
 
@@ -20,9 +25,20 @@ pub struct PiecePlugin;
 impl Plugin for PiecePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PieceMovedEvent>()
+            .add_event::<PiecePickedUpEvent>()
+            .add_event::<PiecePutDownEvent>()
+            .add_event::<PieceConnectionEvent>()
             .add_systems(OnEnter(AppState::Setup), piece_setup)
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
+            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)))
+            .add_systems(
+                Update,
+                piece_pick_up_grow.run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(
+                Update,
+                piece_put_down_shrink.run_if(in_state(AppState::Playing)),
+            );
     }
 }
 

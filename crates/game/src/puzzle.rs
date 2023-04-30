@@ -27,6 +27,9 @@ pub struct Puzzle {
     #[serde(with = "any_key_map")]
     piece_map: HashMap<PieceIndex, Piece>,
 
+    #[serde(with = "any_key_map")]
+    held_pieces: HashMap<PieceIndex, ()>,
+
     groups: Vec<Group>,
 }
 
@@ -73,6 +76,7 @@ impl Puzzle {
         .to_image();
 
         let piece_map = HashMap::new();
+        let held_pieces = HashMap::new();
         let groups = Vec::new();
 
         let mut puzzle = Self {
@@ -82,6 +86,7 @@ impl Puzzle {
             piece_width,
             piece_height,
             piece_map,
+            held_pieces,
             groups,
         };
 
@@ -395,6 +400,10 @@ impl Puzzle {
         self.groups[group_index].locked
     }
 
+    pub fn can_pick_up(&self, index: &PieceIndex) -> bool {
+        !self.piece_group_locked(index) && !self.held_pieces.contains_key(index)
+    }
+
     pub fn apply_event(&mut self, event: AnyGameEvent) -> Vec<AnyGameEvent> {
         use AnyGameEvent::*;
         match event {
@@ -403,16 +412,30 @@ impl Puzzle {
                 .into_iter()
                 .map(PieceMoved)
                 .collect(),
-            PiecePickedUp(_event) => Vec::new(),
-            PiecePutDown(_event) => Vec::new(),
-            PieceConnected(event) => {
+            PiecePickedUp(event) => {
+                if self.held_pieces.contains_key(&event.index) {
+                    return Vec::new();
+                } else {
+                    self.held_pieces.insert(event.index, ());
+                    return vec![PiecePickedUp(event)];
+                }
+            }
+            PiecePutDown(event) => {
+                if self.held_pieces.contains_key(&event.index) {
+                    self.held_pieces.remove(&event.index);
+                    return vec![PiecePutDown(event)];
+                } else {
+                    return Vec::new();
+                }
+            }
+            PieceConnection(event) => {
                 let mut new_events: Vec<AnyGameEvent> = self
                     .make_group_connections(&event.index)
                     .into_iter()
                     .map(PieceMoved)
                     .collect();
                 if !new_events.is_empty() {
-                    new_events.push(PieceConnected(event));
+                    new_events.push(PieceConnection(event));
                 }
                 new_events
             }

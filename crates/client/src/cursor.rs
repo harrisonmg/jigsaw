@@ -5,12 +5,10 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_tweening::Animator;
-use game::{PieceMovedEvent, Puzzle};
+use game::{PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent, PiecePutDownEvent, Puzzle};
 
 use crate::{
-    animation::{grow, shrink},
-    pieces::{HeldPiece, PieceComponent, PieceMap, PieceStack},
+    pieces::{HeldPiece, PieceComponent, PieceStack},
     states::AppState,
 };
 
@@ -104,14 +102,11 @@ fn zoom(
 #[allow(clippy::too_many_arguments)]
 fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
-    mut piece_query: Query<(
-        &PieceComponent,
-        &GlobalTransform,
-        Entity,
-        &mut Animator<Transform>,
-    )>,
+    mut piece_picked_up_events: EventWriter<PiecePickedUpEvent>,
+    mut piece_put_down_events: EventWriter<PiecePutDownEvent>,
+    mut piece_connection_events: EventWriter<PieceConnectionEvent>,
+    piece_query: Query<(&PieceComponent, &GlobalTransform, Entity)>,
     world_cursor_pos: Res<WorldCursorPosition>,
-    piece_map: Res<PieceMap>,
     held_piece: Option<ResMut<HeldPiece>>,
     puzzle: Res<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,
@@ -127,7 +122,7 @@ fn click_piece(
                         let mut candidate_piece = None;
                         let mut candidate_z = f32::NEG_INFINITY;
 
-                        for (piece, piece_transform, piece_entity, _) in piece_query.iter() {
+                        for (piece, piece_transform, piece_entity) in piece_query.iter() {
                             let inverse_transform =
                                 Transform::from_matrix(piece_transform.compute_matrix().inverse());
                             let relative_click_pos = inverse_transform
@@ -137,7 +132,7 @@ fn click_piece(
                             let piece_z = piece_transform.translation().z;
 
                             if piece.within_sprite_bounds(relative_click_pos)
-                                && !puzzle.piece_group_locked(&piece.index())
+                                && puzzle.can_pick_up(&piece.index())
                                 && piece_z > candidate_z
                             {
                                 candidate_entity = Some(piece_entity);
@@ -150,27 +145,24 @@ fn click_piece(
                         }
 
                         if let Some(piece_entity) = candidate_entity {
+                            let candidate_piece = candidate_piece.unwrap();
                             piece_stack.put_on_top(piece_entity);
-
-                            let (_, _, _, mut animator) =
-                                piece_query.get_mut(piece_entity).unwrap();
-                            grow(&mut animator);
-
-                            commands.insert_resource(candidate_piece.unwrap());
+                            piece_picked_up_events.send(PiecePickedUpEvent {
+                                index: candidate_piece.index,
+                            });
+                            commands.insert_resource(candidate_piece);
                             break;
                         }
                     }
                 }
                 ButtonState::Released => {
                     if let Some(held_piece) = held_piece.as_deref() {
-                        // TODO trigger server connection check
-                        //piece_move_events
-                        //    .send_batch(puzzle.make_group_connections(&held_piece.index));
-
-                        let piece_entity = *piece_map.0.get(&held_piece.index).unwrap();
-                        let (_, _, _, mut animator) = piece_query.get_mut(piece_entity).unwrap();
-                        shrink(&mut animator);
-
+                        piece_put_down_events.send(PiecePutDownEvent {
+                            index: held_piece.index,
+                        });
+                        piece_connection_events.send(PieceConnectionEvent {
+                            index: held_piece.index,
+                        });
                         commands.remove_resource::<HeldPiece>();
                     }
                 }

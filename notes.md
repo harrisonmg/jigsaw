@@ -1,6 +1,7 @@
 # TODO
 
-- some kind of piece connection attempt event for bevy to send to network
+- animate entire piece group
+- put down piece on disconnect
 
 - throttle move piece messages?
     - load test first
