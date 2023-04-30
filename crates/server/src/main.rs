@@ -13,7 +13,7 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-use game::{AnyGameEvent, PieceConnectedEvent, Puzzle};
+use game::{AnyGameEvent, Puzzle};
 
 //automod::dir!("src/");
 
@@ -106,7 +106,7 @@ async fn client_handler(
             if msg.is_text() {
                 let event = AnyGameEvent::deserialize(msg.to_str().unwrap());
                 let event = ServerGameEvent { client_id, event };
-                if let Err(_) = event_tx.send(event) {
+                if event_tx.send(event).is_err() {
                     break;
                 }
             } else {
@@ -119,16 +119,18 @@ async fn client_handler(
     // forward broadcasted events to client
     let client_tx_handler = async move {
         while let Ok(event) = event_rx.recv().await {
-            let is_piece_connected_event = match event.event {
-                AnyGameEvent::PieceConnected(_) => true,
-                _ => false,
-            };
-
             // don't echo client events unless they're piece connected events
             // since those are always handled server-side first
             // to prevent non-deterministic connection logic due to rounding errors
-            if event.client_id != client_id || is_piece_connected_event {
-                if let Err(_) = ws_tx.send(Message::text(event.event.serialize())).await {
+            if event.client_id != client_id
+                || matches!(event.event, AnyGameEvent::PieceConnected(_))
+            {
+                #[allow(clippy::collapsible_if)]
+                if ws_tx
+                    .send(Message::text(event.event.serialize()))
+                    .await
+                    .is_err()
+                {
                     break;
                 }
             }

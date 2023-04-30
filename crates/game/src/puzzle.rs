@@ -401,23 +401,23 @@ impl Puzzle {
             PieceMoved(event) => self
                 .try_move_piece(&event.index, event.x, event.y)
                 .into_iter()
-                .map(|e| PieceMoved(e))
+                .map(PieceMoved)
                 .collect(),
-            PiecePickedUp(event) => Vec::new(),
-            PiecePutDown(event) => Vec::new(),
+            PiecePickedUp(_event) => Vec::new(),
+            PiecePutDown(_event) => Vec::new(),
             PieceConnected(event) => {
                 let mut new_events: Vec<AnyGameEvent> = self
                     .make_group_connections(&event.index)
                     .into_iter()
-                    .map(|e| PieceMoved(e))
+                    .map(PieceMoved)
                     .collect();
                 if !new_events.is_empty() {
                     new_events.push(PieceConnected(event));
                 }
                 new_events
             }
-            PlayerConnected(event) => Vec::new(),
-            CursorMoved(event) => Vec::new(),
+            PlayerConnected(_event) => Vec::new(),
+            CursorMoved(_event) => Vec::new(),
         }
     }
 }

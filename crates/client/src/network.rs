@@ -82,11 +82,11 @@ fn event_io(
     for event in new_events {
         match event {
             PieceMoved(event) => piece_moved_events.send(event),
-            PiecePickedUp(event) => (),
-            PiecePutDown(event) => (),
-            PieceConnected(event) => (),
-            PlayerConnected(event) => (),
-            CursorMoved(event) => (),
+            PiecePickedUp(_event) => (),
+            PiecePutDown(_event) => (),
+            PieceConnected(_event) => (),
+            PlayerConnected(_event) => (),
+            CursorMoved(_event) => (),
         }
     }
 
