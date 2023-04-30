@@ -29,19 +29,19 @@ fn spawn_network_io_task(mut commands: Commands) {
             .unwrap();
         let (mut ws_tx, mut ws_rx) = ws_io.split();
 
-        let net_rx = async move {
+        let net_rx_handler = async move {
             while let Some(WsMessage::Text(msg)) = ws_rx.next().await {
                 client_tx.send(msg).unwrap();
             }
         };
 
-        let net_tx = async move {
+        let net_tx_handler = async move {
             while let Some(msg) = client_rx.recv().await {
                 ws_tx.send(WsMessage::Text(msg)).await.unwrap();
             }
         };
 
-        join(net_rx, net_tx).await;
+        join(net_rx_handler, net_tx_handler).await;
     });
     commands.insert_resource(io);
 }
@@ -71,13 +71,14 @@ fn event_io(
         network_io.input.send(event.serialize()).unwrap();
     }
 
+    // receive events from the server and apply them to the local puzzle instance
     let mut new_events = Vec::new();
-
     while let Ok(msg) = network_io.output.try_recv() {
         let event = AnyGameEvent::deserialize(msg.as_str());
         new_events.extend(puzzle.apply_event(event));
     }
 
+    // dispatch new events out to bevy
     for event in new_events {
         match event {
             PieceMoved(event) => piece_moved_events.send(event),
@@ -89,6 +90,6 @@ fn event_io(
         }
     }
 
-    // consume all the events we just received from the server so we don't forward back out next frame
+    // consume all the events we just dispatched so we don't forward them back out next frame
     piece_moved_event_reader.clear(&piece_moved_events);
 }

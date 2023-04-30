@@ -1,6 +1,9 @@
 # TODO
 
+- some kind of piece connection attempt event for bevy to send to network
+
 - throttle move piece messages?
+    - load test first
 
 - server holds multiple connections
     - for each connection

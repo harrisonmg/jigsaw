@@ -7,7 +7,7 @@ pub trait GameEvent {
     fn serialize(&self) -> String;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AnyGameEvent {
     PieceMoved(PieceMovedEvent),
     PiecePickedUp(PiecePickedUpEvent),
@@ -20,6 +20,10 @@ pub enum AnyGameEvent {
 impl AnyGameEvent {
     pub fn deserialize(value: &str) -> Self {
         serde_json::from_str(value).unwrap()
+    }
+
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self).unwrap()
     }
 }
 
@@ -53,7 +57,7 @@ pub struct PiecePickedUpEvent {
 
 impl GameEvent for PiecePickedUpEvent {
     fn serialize(&self) -> String {
-        serde_json::to_string(&AnyGameEvent::PiecePickedUp(self.clone())).unwrap()
+        AnyGameEvent::PiecePickedUp(self.clone()).serialize()
     }
 }
 
@@ -64,7 +68,7 @@ pub struct PiecePutDownEvent {
 
 impl GameEvent for PiecePutDownEvent {
     fn serialize(&self) -> String {
-        serde_json::to_string(&AnyGameEvent::PiecePutDown(self.clone())).unwrap()
+        AnyGameEvent::PiecePutDown(self.clone()).serialize()
     }
 }
 
@@ -75,7 +79,7 @@ pub struct PieceConnectedEvent {
 
 impl GameEvent for PieceConnectedEvent {
     fn serialize(&self) -> String {
-        serde_json::to_string(&AnyGameEvent::PieceConnected(self.clone())).unwrap()
+        AnyGameEvent::PieceConnected(self.clone()).serialize()
     }
 }
 
@@ -88,7 +92,7 @@ pub struct CursorMovedEvent {
 
 impl GameEvent for CursorMovedEvent {
     fn serialize(&self) -> String {
-        serde_json::to_string(&AnyGameEvent::CursorMoved(self.clone())).unwrap()
+        AnyGameEvent::CursorMoved(self.clone()).serialize()
     }
 }
 
@@ -99,6 +103,6 @@ pub struct PlayerConnectedEvent {
 
 impl GameEvent for PlayerConnectedEvent {
     fn serialize(&self) -> String {
-        serde_json::to_string(&AnyGameEvent::PlayerConnected(self.clone())).unwrap()
+        AnyGameEvent::PlayerConnected(self.clone()).serialize()
     }
 }

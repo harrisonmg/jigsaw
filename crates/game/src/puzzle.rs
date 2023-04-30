@@ -405,7 +405,17 @@ impl Puzzle {
                 .collect(),
             PiecePickedUp(event) => Vec::new(),
             PiecePutDown(event) => Vec::new(),
-            PieceConnected(event) => Vec::new(),
+            PieceConnected(event) => {
+                let mut new_events: Vec<AnyGameEvent> = self
+                    .make_group_connections(&event.index)
+                    .into_iter()
+                    .map(|e| PieceMoved(e))
+                    .collect();
+                if !new_events.is_empty() {
+                    new_events.push(PieceConnected(event));
+                }
+                new_events
+            }
             PlayerConnected(event) => Vec::new(),
             CursorMoved(event) => Vec::new(),
         }
