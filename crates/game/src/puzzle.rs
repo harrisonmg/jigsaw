@@ -414,18 +414,18 @@ impl Puzzle {
                 .collect(),
             PiecePickedUp(event) => {
                 if self.held_pieces.contains_key(&event.index) {
-                    return Vec::new();
+                    Vec::new()
                 } else {
                     self.held_pieces.insert(event.index, ());
-                    return vec![PiecePickedUp(event)];
+                    vec![PiecePickedUp(event)]
                 }
             }
             PiecePutDown(event) => {
                 if self.held_pieces.contains_key(&event.index) {
                     self.held_pieces.remove(&event.index);
-                    return vec![PiecePutDown(event)];
+                    vec![PiecePutDown(event)]
                 } else {
-                    return Vec::new();
+                    Vec::new()
                 }
             }
             PieceConnection(event) => {

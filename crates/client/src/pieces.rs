@@ -11,9 +11,7 @@ use game::{
 };
 
 use crate::{
-    animation::{new_piece_animator, piece_pick_up_grow, piece_put_down_shrink},
-    better_quad::BetterQuad,
-    material::PieceMaterial,
+    animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
     states::AppState,
 };
 
@@ -30,15 +28,7 @@ impl Plugin for PiecePlugin {
             .add_event::<PieceConnectionEvent>()
             .add_systems(OnEnter(AppState::Setup), piece_setup)
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)))
-            .add_systems(
-                Update,
-                piece_pick_up_grow.run_if(in_state(AppState::Playing)),
-            )
-            .add_systems(
-                Update,
-                piece_put_down_shrink.run_if(in_state(AppState::Playing)),
-            );
+            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
     }
 }
 

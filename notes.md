@@ -1,6 +1,5 @@
 # TODO
 
-- animate entire piece group
 - put down piece on disconnect
 
 - throttle move piece messages?

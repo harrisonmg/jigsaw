@@ -61,6 +61,7 @@ fn load_puzzle(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn event_io(
     mut piece_moved_events: ResMut<Events<PieceMovedEvent>>,
     mut piece_moved_reader: Local<ManualEventReader<PieceMovedEvent>>,

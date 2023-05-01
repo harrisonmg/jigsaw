@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::time::Duration;
 
 use bevy::prelude::*;
@@ -62,7 +63,7 @@ pub fn piece_pick_up_grow(
 ) {
     for event in piece_picked_up_events.iter() {
         if let Some(piece_entity) = piece_map.0.get(&event.index) {
-            if let Ok(mut animator) = piece_query.get_mut(piece_entity.clone()) {
+            if let Ok(mut animator) = piece_query.get_mut(*piece_entity) {
                 grow(&mut animator);
             }
         }
@@ -76,7 +77,7 @@ pub fn piece_put_down_shrink(
 ) {
     for event in piece_put_down_events.iter() {
         if let Some(piece_entity) = piece_map.0.get(&event.index) {
-            if let Ok(mut animator) = piece_query.get_mut(piece_entity.clone()) {
+            if let Ok(mut animator) = piece_query.get_mut(*piece_entity) {
                 shrink(&mut animator);
             }
         }
