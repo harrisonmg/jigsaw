@@ -14,6 +14,7 @@ pub enum AnyGameEvent {
     PiecePutDown(PiecePutDownEvent),
     PieceConnection(PieceConnectionEvent),
     PlayerConnected(PlayerConnectedEvent),
+    PlayerDisconnected(PlayerDisconnectedEvent),
     CursorMoved(CursorMovedEvent),
 }
 
@@ -104,5 +105,16 @@ pub struct PlayerConnectedEvent {
 impl GameEvent for PlayerConnectedEvent {
     fn serialize(&self) -> String {
         AnyGameEvent::PlayerConnected(self.clone()).serialize()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PlayerDisconnectedEvent {
+    pub player: Player,
+}
+
+impl GameEvent for PlayerDisconnectedEvent {
+    fn serialize(&self) -> String {
+        AnyGameEvent::PlayerDisconnected(self.clone()).serialize()
     }
 }

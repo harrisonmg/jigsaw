@@ -1,12 +1,12 @@
 use bevy::prelude::Color;
 use serde::{Deserialize, Serialize};
-//use uuid::Uuid;
+use uuid::Uuid;
 
 use crate::PieceIndex;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Player {
-    //pub client_id: Uuid,
+    pub client_id: Uuid,
     pub held_piece: Option<PieceIndex>,
     //pub cursor: Cursor,
 }

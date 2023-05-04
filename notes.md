@@ -1,6 +1,5 @@
 # TODO
 
-- consider using bevy children to allow group animation
 - put down piece on disconnect
 - cursors
 - server admin features

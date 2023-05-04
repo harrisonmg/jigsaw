@@ -110,6 +110,7 @@ fn event_io(
             PiecePutDown(event) => piece_put_down_events.send(event),
             PieceConnection(event) => piece_connection_events.send(event),
             PlayerConnected(_event) => (),
+            PlayerDisconnected(_event) => (),
             CursorMoved(_event) => (),
         }
     }

@@ -440,6 +440,7 @@ impl Puzzle {
                 new_events
             }
             PlayerConnected(_event) => Vec::new(),
+            PlayerDisconnected(_event) => Vec::new(),
             CursorMoved(_event) => Vec::new(),
         }
     }

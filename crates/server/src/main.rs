@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
@@ -13,7 +13,7 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-use game::{AnyGameEvent, Puzzle};
+use game::{AnyGameEvent, PieceIndex, Puzzle};
 
 //automod::dir!("src/");
 
@@ -28,6 +28,7 @@ struct ServerGameEvent {
 #[tokio::main]
 async fn main() {
     let puzzle = Arc::new(RwLock::new(load_puzzle().await));
+    let held_pieces = HashMap::new();
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
 
