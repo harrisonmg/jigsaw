@@ -37,7 +37,7 @@ pub struct PieceMovedEvent {
 
 impl GameEvent for PieceMovedEvent {
     fn serialize(&self) -> String {
-        serde_json::to_string(&AnyGameEvent::PieceMoved(self.clone())).unwrap()
+        serde_json::to_string(&AnyGameEvent::PieceMoved(*self)).unwrap()
     }
 }
 
@@ -59,7 +59,7 @@ pub struct PiecePickedUpEvent {
 
 impl GameEvent for PiecePickedUpEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::PiecePickedUp(self.clone()).serialize()
+        AnyGameEvent::PiecePickedUp(*self).serialize()
     }
 }
 
@@ -71,7 +71,7 @@ pub struct PiecePutDownEvent {
 
 impl GameEvent for PiecePutDownEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::PiecePutDown(self.clone()).serialize()
+        AnyGameEvent::PiecePutDown(*self).serialize()
     }
 }
 
@@ -82,7 +82,7 @@ pub struct PieceConnectionEvent {
 
 impl GameEvent for PieceConnectionEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::PieceConnection(self.clone()).serialize()
+        AnyGameEvent::PieceConnection(*self).serialize()
     }
 }
 
@@ -95,7 +95,7 @@ pub struct CursorMovedEvent {
 
 impl GameEvent for CursorMovedEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::CursorMoved(self.clone()).serialize()
+        AnyGameEvent::CursorMoved(*self).serialize()
     }
 }
 
@@ -107,7 +107,7 @@ pub struct PlayerConnectedEvent {
 
 impl GameEvent for PlayerConnectedEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::PlayerConnected(self.clone()).serialize()
+        AnyGameEvent::PlayerConnected(*self).serialize()
     }
 }
 
@@ -118,6 +118,6 @@ pub struct PlayerDisconnectedEvent {
 
 impl GameEvent for PlayerDisconnectedEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::PlayerDisconnected(self.clone()).serialize()
+        AnyGameEvent::PlayerDisconnected(*self).serialize()
     }
 }
