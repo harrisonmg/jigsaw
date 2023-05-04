@@ -1,14 +1,26 @@
 use std::fmt::Debug;
 
-use bevy::{prelude::Vec3, transform::components::Transform, utils::HashMap};
+use bevy::{
+    prelude::{Color, Vec3},
+    transform::components::Transform,
+    utils::HashMap,
+};
 use image::RgbaImage;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
+use uuid::Uuid;
 
 use crate::{AnyGameEvent, Piece, PieceIndex, PieceKind, PieceMovedEvent};
 
 pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub struct Cursor {
+    pub color: Color,
+    pub x: f32,
+    pub y: f32,
+}
 
 #[derive(Serialize, Deserialize)]
 struct Group {
@@ -28,7 +40,7 @@ pub struct Puzzle {
     piece_map: HashMap<PieceIndex, Piece>,
 
     #[serde(with = "any_key_map")]
-    held_pieces: HashMap<PieceIndex, ()>,
+    held_pieces: HashMap<Uuid, PieceIndex>,
 
     groups: Vec<Group>,
 }
@@ -400,8 +412,14 @@ impl Puzzle {
         self.groups[group_index].locked
     }
 
+    pub fn piece_held(&self, index: &PieceIndex) -> bool {
+        self.held_pieces
+            .values()
+            .any(|held_index| held_index == index)
+    }
+
     pub fn can_pick_up(&self, index: &PieceIndex) -> bool {
-        !self.piece_group_locked(index) && !self.held_pieces.contains_key(index)
+        !self.piece_group_locked(index) && !self.piece_held(index)
     }
 
     pub fn apply_event(&mut self, event: AnyGameEvent) -> Vec<AnyGameEvent> {
@@ -413,16 +431,20 @@ impl Puzzle {
                 .map(PieceMoved)
                 .collect(),
             PiecePickedUp(event) => {
-                if self.held_pieces.contains_key(&event.index) {
-                    Vec::new()
-                } else {
-                    self.held_pieces.insert(event.index, ());
+                if self.can_pick_up(&event.index) {
+                    self.held_pieces.insert(event.player_id, event.index);
                     vec![PiecePickedUp(event)]
+                } else {
+                    Vec::new()
                 }
             }
             PiecePutDown(event) => {
-                if self.held_pieces.contains_key(&event.index) {
-                    self.held_pieces.remove(&event.index);
+                if self
+                    .held_pieces
+                    .get(&event.player_id)
+                    .map_or(false, |index| *index == event.index)
+                {
+                    self.held_pieces.remove(&event.player_id);
                     vec![PiecePutDown(event)]
                 } else {
                     Vec::new()
@@ -440,7 +462,10 @@ impl Puzzle {
                 new_events
             }
             PlayerConnected(_event) => Vec::new(),
-            PlayerDisconnected(_event) => Vec::new(),
+            PlayerDisconnected(event) => {
+                self.held_pieces.remove(&event.player_id);
+                vec![PlayerDisconnected(event)]
+            }
             CursorMoved(_event) => Vec::new(),
         }
     }

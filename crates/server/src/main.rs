@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
@@ -13,22 +13,21 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-use game::{AnyGameEvent, PieceIndex, Puzzle};
+use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
 
 //automod::dir!("src/");
 
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 struct ServerGameEvent {
     pub client_id: Uuid,
-    pub event: AnyGameEvent,
+    pub game_event: AnyGameEvent,
 }
 
 #[tokio::main]
 async fn main() {
     let puzzle = Arc::new(RwLock::new(load_puzzle().await));
-    let held_pieces = HashMap::new();
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
 
@@ -47,13 +46,13 @@ async fn main() {
 
     // apply events to the puzzle and dispatch the generated events to clients
     let event_handler = async move {
-        while let Some(event) = event_input_rx.recv().await {
-            let res_events = puzzle.write().await.apply_event(event.event);
+        while let Some(server_event) = event_input_rx.recv().await {
+            let res_events = puzzle.write().await.apply_event(server_event.game_event);
             for res_event in res_events {
                 event_output_tx
                     .send(ServerGameEvent {
-                        client_id: event.client_id,
-                        event: res_event,
+                        client_id: server_event.client_id,
+                        game_event: res_event,
                     })
                     .unwrap();
             }
@@ -108,7 +107,10 @@ async fn client_handler(
 
             if msg.is_text() {
                 let event = AnyGameEvent::deserialize(msg.to_str().unwrap());
-                let event = ServerGameEvent { client_id, event };
+                let event = ServerGameEvent {
+                    client_id,
+                    game_event: event,
+                };
                 if event_tx.send(event).is_err() {
                     break;
                 }
@@ -116,7 +118,15 @@ async fn client_handler(
                 println!("{msg:?}");
             }
         }
-        println!("Client {client_id} disconnected");
+
+        event_tx
+            .send(ServerGameEvent {
+                client_id,
+                game_event: AnyGameEvent::PlayerDisconnected(PlayerDisconnectedEvent {
+                    player_id: client_id,
+                }),
+            })
+            .unwrap();
     };
 
     // forward broadcasted events to client
@@ -126,11 +136,11 @@ async fn client_handler(
             // since those are always handled server-side first
             // to prevent non-deterministic connection logic due to rounding errors
             if event.client_id != client_id
-                || matches!(event.event, AnyGameEvent::PieceConnection(_))
+                || matches!(event.game_event, AnyGameEvent::PieceConnection(_))
             {
                 #[allow(clippy::collapsible_if)]
                 if ws_tx
-                    .send(Message::text(event.event.serialize()))
+                    .send(Message::text(event.game_event.serialize()))
                     .await
                     .is_err()
                 {

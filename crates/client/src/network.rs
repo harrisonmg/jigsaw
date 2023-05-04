@@ -98,7 +98,6 @@ fn event_io(
     let mut new_events = Vec::new();
     while let Ok(msg) = network_io.output.try_recv() {
         let event = AnyGameEvent::deserialize(msg.as_str());
-        info!("{event:?}");
         new_events.extend(puzzle.apply_event(event));
     }
 

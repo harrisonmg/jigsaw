@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{Piece, PieceIndex, Player};
+use crate::{Cursor, Piece, PieceIndex};
 
 pub trait GameEvent {
     fn serialize(&self) -> String;
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum AnyGameEvent {
     PieceMoved(PieceMovedEvent),
     PiecePickedUp(PiecePickedUpEvent),
@@ -28,7 +28,7 @@ impl AnyGameEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PieceMovedEvent {
     pub index: PieceIndex,
     pub x: f32,
@@ -51,8 +51,9 @@ impl From<&Piece> for PieceMovedEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PiecePickedUpEvent {
+    pub player_id: Uuid,
     pub index: PieceIndex,
 }
 
@@ -62,8 +63,9 @@ impl GameEvent for PiecePickedUpEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PiecePutDownEvent {
+    pub player_id: Uuid,
     pub index: PieceIndex,
 }
 
@@ -73,7 +75,7 @@ impl GameEvent for PiecePutDownEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PieceConnectionEvent {
     pub index: PieceIndex,
 }
@@ -84,7 +86,7 @@ impl GameEvent for PieceConnectionEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct CursorMovedEvent {
     pub player_id: Uuid,
     pub x: f32,
@@ -97,9 +99,10 @@ impl GameEvent for CursorMovedEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PlayerConnectedEvent {
-    pub player: Player,
+    pub player_id: Uuid,
+    pub cursor: Cursor,
 }
 
 impl GameEvent for PlayerConnectedEvent {
@@ -108,9 +111,9 @@ impl GameEvent for PlayerConnectedEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PlayerDisconnectedEvent {
-    pub player: Player,
+    pub player_id: Uuid,
 }
 
 impl GameEvent for PlayerDisconnectedEvent {
