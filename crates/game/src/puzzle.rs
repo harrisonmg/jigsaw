@@ -1,10 +1,6 @@
 use std::fmt::Debug;
 
-use bevy::{
-    prelude::{Color, Vec3},
-    transform::components::Transform,
-    utils::HashMap,
-};
+use bevy::{prelude::Vec3, transform::components::Transform, utils::HashMap};
 use image::RgbaImage;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -12,6 +8,8 @@ use serde_json_any_key::*;
 use uuid::Uuid;
 
 use crate::{AnyGameEvent, Piece, PieceIndex, PieceKind, PieceMovedEvent};
+
+pub use bevy::prelude::Color;
 
 pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
 

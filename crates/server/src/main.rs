@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
+use rand::Rng;
 use tokio::sync::{
     broadcast::{self, Receiver},
     mpsc::{unbounded_channel, UnboundedSender},
@@ -13,9 +14,7 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
-
-//automod::dir!("src/");
+use game::{AnyGameEvent, Color, PlayerConnectedEvent, PlayerDisconnectedEvent, Puzzle};
 
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
 
@@ -87,6 +86,22 @@ async fn client_handler(
     mut event_rx: Receiver<ServerGameEvent>,
 ) {
     let client_id = Uuid::new_v4();
+    let client_color = random_color();
+
+    event_tx
+        .send(ServerGameEvent {
+            client_id,
+            game_event: AnyGameEvent::PlayerConnected(PlayerConnectedEvent {
+                player_id: client_id,
+                cursor: game::Cursor {
+                    color: client_color,
+                    x: f32::INFINITY,
+                    y: f32::INFINITY,
+                },
+            }),
+        })
+        .unwrap();
+
     println!("Client {client_id} connected");
 
     let (mut ws_tx, mut ws_rx) = ws.split();
@@ -151,4 +166,10 @@ async fn client_handler(
     };
 
     join(client_rx_handler, client_tx_handler).await;
+}
+
+fn random_color() -> Color {
+    let mut rng = rand::thread_rng();
+    let val: u32 = rng.gen_range(0..0xFFFFFF);
+    Color::hex(format!("{val:x}")).unwrap()
 }
