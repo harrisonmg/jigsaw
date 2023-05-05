@@ -148,6 +148,7 @@ fn click_piece(
                             let candidate_piece = candidate_piece.unwrap();
                             piece_stack.put_on_top(piece_entity);
                             piece_picked_up_events.send(PiecePickedUpEvent {
+                                player_id: None,
                                 index: candidate_piece.index,
                             });
                             commands.insert_resource(candidate_piece);
@@ -158,6 +159,7 @@ fn click_piece(
                 ButtonState::Released => {
                     if let Some(held_piece) = held_piece.as_deref() {
                         piece_put_down_events.send(PiecePutDownEvent {
+                            player_id: None,
                             index: held_piece.index,
                         });
                         piece_connection_events.send(PieceConnectionEvent {

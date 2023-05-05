@@ -53,7 +53,7 @@ impl From<&Piece> for PieceMovedEvent {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PiecePickedUpEvent {
-    pub player_id: Uuid,
+    pub player_id: Option<Uuid>,
     pub index: PieceIndex,
 }
 
@@ -65,7 +65,7 @@ impl GameEvent for PiecePickedUpEvent {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PiecePutDownEvent {
-    pub player_id: Uuid,
+    pub player_id: Option<Uuid>,
     pub index: PieceIndex,
 }
 
@@ -88,7 +88,7 @@ impl GameEvent for PieceConnectionEvent {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct CursorMovedEvent {
-    pub player_id: Uuid,
+    pub player_id: Option<Uuid>,
     pub x: f32,
     pub y: f32,
 }

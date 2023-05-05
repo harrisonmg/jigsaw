@@ -432,23 +432,26 @@ impl Puzzle {
                 .collect(),
             PiecePickedUp(event) => {
                 if self.can_pick_up(&event.index) {
-                    self.held_pieces.insert(event.player_id, event.index);
+                    if let Some(player_id) = event.player_id {
+                        self.held_pieces.insert(player_id, event.index);
+                    }
                     vec![PiecePickedUp(event)]
                 } else {
                     Vec::new()
                 }
             }
             PiecePutDown(event) => {
-                if self
-                    .held_pieces
-                    .get(&event.player_id)
-                    .map_or(false, |index| *index == event.index)
-                {
-                    self.held_pieces.remove(&event.player_id);
-                    vec![PiecePutDown(event)]
-                } else {
-                    Vec::new()
+                if let Some(player_id) = event.player_id {
+                    if self
+                        .held_pieces
+                        .get(&player_id)
+                        .map_or(false, |index| *index == event.index)
+                    {
+                        self.held_pieces.remove(&player_id);
+                    }
+                    return vec![PiecePutDown(event)];
                 }
+                Vec::new()
             }
             PieceConnection(event) => {
                 let mut new_events: Vec<AnyGameEvent> = self

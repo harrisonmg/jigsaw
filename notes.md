@@ -1,6 +1,5 @@
 # TODO
 
-- put down piece on disconnect
 - cursors
 - server admin features
 
