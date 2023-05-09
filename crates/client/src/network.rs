@@ -4,8 +4,8 @@ use bevy::tasks::AsyncComputeTaskPool;
 use futures_util::future::join;
 use futures_util::{SinkExt, StreamExt};
 use game::{
-    AnyGameEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent,
-    PiecePutDownEvent, Puzzle,
+    AnyGameEvent, CursorMovedEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent,
+    PiecePickedUpEvent, PiecePutDownEvent, PlayerConnectedEvent, PlayerDisconnectedEvent, Puzzle,
 };
 use ws_stream_wasm::{WsMessage, WsMeta};
 
@@ -16,7 +16,14 @@ pub struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
+        app.add_event::<PieceMovedEvent>()
+            .add_event::<PiecePickedUpEvent>()
+            .add_event::<PiecePutDownEvent>()
+            .add_event::<PieceConnectionEvent>()
+            .add_event::<PlayerConnectedEvent>()
+            .add_event::<PlayerDisconnectedEvent>()
+            .add_event::<CursorMovedEvent>()
+            .add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
             .add_systems(Update, load_puzzle.run_if(in_state(AppState::Loading)))
             .add_systems(Update, event_io.run_if(in_state(AppState::Playing)));
     }
@@ -75,6 +82,15 @@ fn event_io(
     mut piece_connection_events: ResMut<Events<PieceConnectionEvent>>,
     mut piece_connection_reader: Local<ManualEventReader<PieceConnectionEvent>>,
 
+    mut player_connected_events: ResMut<Events<PlayerConnectedEvent>>,
+    mut player_connected_reader: Local<ManualEventReader<PlayerConnectedEvent>>,
+
+    mut player_disconnected_events: ResMut<Events<PlayerDisconnectedEvent>>,
+    mut player_disconnected_reader: Local<ManualEventReader<PlayerDisconnectedEvent>>,
+
+    mut cursor_moved_events: ResMut<Events<CursorMovedEvent>>,
+    mut cursor_moved_reader: Local<ManualEventReader<CursorMovedEvent>>,
+
     mut network_io: ResMut<NetworkIO>,
     mut puzzle: ResMut<Puzzle>,
 ) {
@@ -93,6 +109,15 @@ fn event_io(
     for event in piece_connection_reader.iter(&piece_connection_events) {
         network_io.input.send(event.serialize()).unwrap();
     }
+    for event in player_connected_reader.iter(&player_connected_events) {
+        network_io.input.send(event.serialize()).unwrap();
+    }
+    for event in player_disconnected_reader.iter(&player_disconnected_events) {
+        network_io.input.send(event.serialize()).unwrap();
+    }
+    for event in cursor_moved_reader.iter(&cursor_moved_events) {
+        network_io.input.send(event.serialize()).unwrap();
+    }
 
     // receive events from the server and apply them to the local puzzle instance
     let mut new_events = Vec::new();
@@ -108,9 +133,9 @@ fn event_io(
             PiecePickedUp(event) => piece_picked_up_events.send(event),
             PiecePutDown(event) => piece_put_down_events.send(event),
             PieceConnection(event) => piece_connection_events.send(event),
-            PlayerConnected(_event) => (),
-            PlayerDisconnected(_event) => (),
-            CursorMoved(_event) => (),
+            PlayerConnected(event) => player_connected_events.send(event),
+            PlayerDisconnected(event) => player_disconnected_events.send(event),
+            CursorMoved(event) => cursor_moved_events.send(event),
         }
     }
 
@@ -119,4 +144,7 @@ fn event_io(
     piece_picked_up_reader.clear(&piece_picked_up_events);
     piece_put_down_reader.clear(&piece_put_down_events);
     piece_connection_reader.clear(&piece_connection_events);
+    player_connected_reader.clear(&player_connected_events);
+    player_disconnected_reader.clear(&player_disconnected_events);
+    cursor_moved_reader.clear(&cursor_moved_events);
 }

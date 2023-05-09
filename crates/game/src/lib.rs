@@ -1,3 +1,6 @@
+pub use bevy::prelude::Color;
+pub use uuid::Uuid;
+
 mod image;
 
 pub mod events;

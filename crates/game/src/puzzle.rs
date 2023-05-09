@@ -5,11 +5,8 @@ use image::RgbaImage;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
-use uuid::Uuid;
 
-use crate::{AnyGameEvent, Piece, PieceIndex, PieceKind, PieceMovedEvent};
-
-pub use bevy::prelude::Color;
+use crate::{AnyGameEvent, Color, Piece, PieceIndex, PieceKind, PieceMovedEvent, Uuid};
 
 pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
 
@@ -39,6 +36,9 @@ pub struct Puzzle {
 
     #[serde(with = "any_key_map")]
     held_pieces: HashMap<Uuid, PieceIndex>,
+
+    #[serde(with = "any_key_map")]
+    cursors: HashMap<Uuid, Cursor>,
 
     groups: Vec<Group>,
 }
@@ -88,6 +88,7 @@ impl Puzzle {
         let piece_map = HashMap::new();
         let held_pieces = HashMap::new();
         let groups = Vec::new();
+        let cursors = HashMap::new();
 
         let mut puzzle = Self {
             image: crate::image::Image::empty(),
@@ -98,6 +99,7 @@ impl Puzzle {
             piece_map,
             held_pieces,
             groups,
+            cursors,
         };
 
         let mut rng = rand::thread_rng();
@@ -159,6 +161,10 @@ impl Puzzle {
 
     pub fn num_rows(&self) -> u8 {
         self.num_rows
+    }
+
+    pub fn cursors(&self) -> &HashMap<Uuid, Cursor> {
+        &self.cursors
     }
 
     pub fn piece(&self, index: &PieceIndex) -> Option<&Piece> {
@@ -462,12 +468,25 @@ impl Puzzle {
                 }
                 new_events
             }
-            PlayerConnected(_event) => Vec::new(),
+            PlayerConnected(event) => {
+                self.cursors.insert(event.player_id, event.cursor);
+                vec![PlayerConnected(event)]
+            }
             PlayerDisconnected(event) => {
                 self.held_pieces.remove(&event.player_id);
+                self.cursors.remove(&event.player_id);
                 vec![PlayerDisconnected(event)]
             }
-            CursorMoved(_event) => Vec::new(),
+            CursorMoved(event) => {
+                if let Some(player_id) = event.player_id {
+                    if let Some(mut cursor) = self.cursors.get_mut(&player_id) {
+                        cursor.x = event.x;
+                        cursor.y = event.y;
+                    }
+                    return vec![CursorMoved(event)];
+                }
+                Vec::new()
+            }
         }
     }
 }
