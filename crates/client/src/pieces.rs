@@ -58,9 +58,9 @@ pub struct PieceBundle {
 impl PieceBundle {
     pub fn new(
         piece: &Piece,
-        image_assets: &mut ResMut<Assets<Image>>,
-        meshes: &mut ResMut<Assets<Mesh>>,
-        materials: &mut ResMut<Assets<PieceMaterial>>,
+        image_assets: &mut Assets<Image>,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<PieceMaterial>,
     ) -> Self {
         let sprite = piece.sprite_clone();
 
