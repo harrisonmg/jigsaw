@@ -1,4 +1,5 @@
 use bevy::{
+    pbr::wireframe::Wireframe,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     sprite::MaterialMesh2dBundle,
@@ -27,16 +28,15 @@ pub struct CursorComponent {}
 
 #[derive(Bundle)]
 pub struct CursorBundle {
-    pub cursor: CursorComponent,
-
-    #[bundle]
+    cursor: CursorComponent,
+    wireframe: Wireframe,
     mesh_bundle: MaterialMesh2dBundle<ColorMaterial>,
 }
 
 fn add_cursor(
     cursor: &Cursor,
     player_id: Uuid,
-    puzzle: &Puzzle,
+    _puzzle: &Puzzle, // TODO: use piece size to determine cursor size
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<ColorMaterial>,
     cursor_map: &mut CursorMap,
@@ -60,6 +60,7 @@ fn add_cursor(
             material,
             ..Default::default()
         },
+        wireframe: Wireframe {},
     };
 
     let entity = commands.spawn(bundle).id();

@@ -48,10 +48,8 @@ impl PieceComponent {
 
 #[derive(Bundle)]
 pub struct PieceBundle {
-    pub piece: PieceComponent,
-    pub animator: Animator<Transform>,
-
-    #[bundle]
+    piece: PieceComponent,
+    animator: Animator<Transform>,
     mesh_bundle: MaterialMesh2dBundle<PieceMaterial>,
 }
 

@@ -95,8 +95,11 @@ async fn client_handler(
                 player_id: client_id,
                 cursor: game::Cursor {
                     color: client_color,
-                    x: f32::INFINITY,
-                    y: f32::INFINITY,
+                    x: 0.0,
+                    y: 0.0,
+                    // TODO: origin initial cursor location not good maybe
+                    //x: f32::INFINITY,
+                    //y: f32::INFINITY,
                 },
             }),
         })

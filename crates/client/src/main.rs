@@ -1,5 +1,7 @@
 use bevy::diagnostic::LogDiagnosticsPlugin;
+use bevy::pbr::wireframe::{Wireframe, WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
+use bevy::render::{render_resource::WgpuFeatures, settings::WgpuSettings, RenderPlugin};
 use bevy::sprite::Material2dPlugin;
 
 use game::Puzzle;
@@ -29,8 +31,15 @@ fn main() {
                         ..Default::default()
                     }),
                     ..Default::default()
+                })
+                .set(RenderPlugin {
+                    wgpu_settings: WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..default()
+                    },
                 }),
         )
+        .add_plugin(WireframePlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(DisableContextMenuPlugin)
         .add_plugin(WorldCursorPlugin)

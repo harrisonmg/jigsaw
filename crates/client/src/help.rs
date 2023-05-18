@@ -31,7 +31,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn(NodeBundle {
             style: Style {
-                size: Size::width(Val::Percent(100.0)),
+                //size: Size::width(Val::Percent(100.0)), // TODO: fix
                 align_items: AlignItems::End,
                 justify_content: JustifyContent::Start,
                 ..default()
