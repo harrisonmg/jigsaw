@@ -4,6 +4,7 @@
     - color and shape kinda messed up
 
 - server admin features
+    - at least turn image link into a CLI arg
 
 - player timeout
 
