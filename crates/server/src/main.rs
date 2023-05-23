@@ -109,9 +109,6 @@ async fn client_handler(
                         color: client_color,
                         x: 0.0,
                         y: 0.0,
-                        // TODO: origin initial cursor location not good maybe
-                        //x: f32::INFINITY,
-                        //y: f32::INFINITY,
                     },
                 }),
             })
@@ -124,12 +121,15 @@ async fn client_handler(
             };
 
             if msg.is_text() {
-                let event = AnyGameEvent::deserialize(msg.to_str().unwrap());
-                let event = ServerGameEvent {
+                let mut game_event = AnyGameEvent::deserialize(msg.to_str().unwrap());
+                game_event.add_player_id(client_id);
+
+                let server_event = ServerGameEvent {
                     client_id,
-                    game_event: event,
+                    game_event,
                 };
-                if event_tx.send(event).is_err() {
+
+                if event_tx.send(server_event).is_err() {
                     break;
                 }
             } else {

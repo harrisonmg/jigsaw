@@ -12,8 +12,8 @@ use crate::{
     states::AppState,
 };
 
-const MIN_PIECE_HEIGHT: f32 = 500.0;
-const MAX_PIECE_HEIGHT: f32 = 900.0;
+pub const MIN_PIECE_HEIGHT: f32 = 500.0;
+pub const MAX_PIECE_HEIGHT: f32 = 900.0;
 
 pub struct PiecePlugin;
 

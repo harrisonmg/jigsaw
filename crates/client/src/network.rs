@@ -4,8 +4,9 @@ use bevy::tasks::AsyncComputeTaskPool;
 use futures_util::future::join;
 use futures_util::{SinkExt, StreamExt};
 use game::{
-    AnyGameEvent, CursorMovedEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent,
-    PiecePickedUpEvent, PiecePutDownEvent, PlayerConnectedEvent, PlayerDisconnectedEvent, Puzzle,
+    AnyGameEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent,
+    PiecePutDownEvent, PlayerConnectedEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent,
+    Puzzle,
 };
 use ws_stream_wasm::{WsMessage, WsMeta};
 
@@ -22,7 +23,7 @@ impl Plugin for NetworkPlugin {
             .add_event::<PieceConnectionEvent>()
             .add_event::<PlayerConnectedEvent>()
             .add_event::<PlayerDisconnectedEvent>()
-            .add_event::<CursorMovedEvent>()
+            .add_event::<PlayerCursorMovedEvent>()
             .add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
             .add_systems(Update, load_puzzle.run_if(in_state(AppState::Loading)))
             .add_systems(Update, event_io.run_if(in_state(AppState::Playing)));
@@ -88,8 +89,8 @@ fn event_io(
     mut player_disconnected_events: ResMut<Events<PlayerDisconnectedEvent>>,
     mut player_disconnected_reader: Local<ManualEventReader<PlayerDisconnectedEvent>>,
 
-    mut cursor_moved_events: ResMut<Events<CursorMovedEvent>>,
-    mut cursor_moved_reader: Local<ManualEventReader<CursorMovedEvent>>,
+    mut player_cursor_moved_events: ResMut<Events<PlayerCursorMovedEvent>>,
+    mut player_cursor_moved_reader: Local<ManualEventReader<PlayerCursorMovedEvent>>,
 
     mut network_io: ResMut<NetworkIO>,
     mut puzzle: ResMut<Puzzle>,
@@ -115,7 +116,7 @@ fn event_io(
     for event in player_disconnected_reader.iter(&player_disconnected_events) {
         network_io.input.send(event.serialize()).unwrap();
     }
-    for event in cursor_moved_reader.iter(&cursor_moved_events) {
+    for event in player_cursor_moved_reader.iter(&player_cursor_moved_events) {
         network_io.input.send(event.serialize()).unwrap();
     }
 
@@ -135,7 +136,7 @@ fn event_io(
             PieceConnection(event) => piece_connection_events.send(event),
             PlayerConnected(event) => player_connected_events.send(event),
             PlayerDisconnected(event) => player_disconnected_events.send(event),
-            CursorMoved(event) => cursor_moved_events.send(event),
+            PlayerCursorMoved(event) => player_cursor_moved_events.send(event),
         }
     }
 
@@ -146,5 +147,5 @@ fn event_io(
     piece_connection_reader.clear(&piece_connection_events);
     player_connected_reader.clear(&player_connected_events);
     player_disconnected_reader.clear(&player_disconnected_events);
-    cursor_moved_reader.clear(&cursor_moved_events);
+    player_cursor_moved_reader.clear(&player_cursor_moved_events);
 }

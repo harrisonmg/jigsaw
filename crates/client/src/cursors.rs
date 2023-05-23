@@ -4,15 +4,22 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
     utils::HashMap,
 };
-use game::{Cursor, CursorMovedEvent, PlayerConnectedEvent, PlayerDisconnectedEvent, Puzzle, Uuid};
+use game::{
+    Cursor, PlayerConnectedEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle, Uuid,
+};
 
 use crate::states::AppState;
+use crate::{
+    mouse::{WorldCursorMoved, WorldCursorPosition},
+    pieces::MAX_PIECE_HEIGHT,
+};
 
 const CURSOR_SIZE_RATIO: f32 = 0.4;
+const CURSOR_HEIGHT: f32 = MAX_PIECE_HEIGHT + 1.0;
 
-pub struct PlayersPlugin;
+pub struct CursorPlugin;
 
-impl Plugin for PlayersPlugin {
+impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::Setup), player_cursors_setup)
             .add_systems(Update, player_connected.run_if(in_state(AppState::Playing)))
@@ -20,7 +27,11 @@ impl Plugin for PlayersPlugin {
                 Update,
                 player_disconnected.run_if(in_state(AppState::Playing)),
             )
-            .add_systems(Update, cursor_moved.run_if(in_state(AppState::Playing)));
+            .add_systems(
+                Update,
+                player_cursor_moved.run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)));
     }
 }
 
@@ -63,6 +74,7 @@ fn add_cursor(
         mesh_bundle: MaterialMesh2dBundle {
             mesh: mesh_handle.into(),
             material,
+            transform: Transform::from_xyz(cursor.x, cursor.y, -1.0),
             ..Default::default()
         },
     };
@@ -129,8 +141,8 @@ fn player_disconnected(
     }
 }
 
-fn cursor_moved(
-    mut cursor_moved_events: EventReader<CursorMovedEvent>,
+fn player_cursor_moved(
+    mut cursor_moved_events: EventReader<PlayerCursorMovedEvent>,
     cursor_map: ResMut<CursorMap>,
     mut cursor_query: Query<&mut Transform, With<CursorComponent>>,
 ) {
@@ -140,6 +152,21 @@ fn cursor_moved(
             let mut transform = cursor_query.get_mut(*entity).unwrap();
             transform.translation.x = event.x;
             transform.translation.y = event.y;
+            transform.translation.z = CURSOR_HEIGHT
         }
+    }
+}
+
+fn mouse_moved(
+    world_cursor_moved_events: EventReader<WorldCursorMoved>,
+    mut cursor_moved_events: EventWriter<PlayerCursorMovedEvent>,
+    world_cursor_pos: Res<WorldCursorPosition>,
+) {
+    if !world_cursor_moved_events.is_empty() {
+        cursor_moved_events.send(PlayerCursorMovedEvent {
+            player_id: None,
+            x: world_cursor_pos.0.x,
+            y: world_cursor_pos.0.y,
+        });
     }
 }

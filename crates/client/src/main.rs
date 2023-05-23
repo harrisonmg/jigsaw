@@ -8,13 +8,13 @@ automod::dir!("src/");
 
 use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
-use cursor::MousePlugin;
+use cursors::CursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
 use help::HelpPlugin;
 use material::PieceMaterial;
+use mouse::MousePlugin;
 use network::NetworkPlugin;
 use pieces::PiecePlugin;
-use players::PlayersPlugin;
 use states::AppState;
 use viewport::get_viewport_size;
 
@@ -38,7 +38,7 @@ fn main() {
         .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_plugin(NetworkPlugin)
-        .add_plugin(PlayersPlugin)
+        .add_plugin(CursorPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)
         .add_plugin(HelpPlugin)

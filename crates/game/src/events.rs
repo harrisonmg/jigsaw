@@ -15,7 +15,7 @@ pub enum AnyGameEvent {
     PieceConnection(PieceConnectionEvent),
     PlayerConnected(PlayerConnectedEvent),
     PlayerDisconnected(PlayerDisconnectedEvent),
-    CursorMoved(CursorMovedEvent),
+    PlayerCursorMoved(PlayerCursorMovedEvent),
 }
 
 impl AnyGameEvent {
@@ -25,6 +25,15 @@ impl AnyGameEvent {
 
     pub fn serialize(&self) -> String {
         serde_json::to_string(self).unwrap()
+    }
+
+    pub fn add_player_id(&mut self, id: Uuid) {
+        match self {
+            AnyGameEvent::PiecePickedUp(ref mut event) => event.player_id = Some(id),
+            AnyGameEvent::PiecePutDown(ref mut event) => event.player_id = Some(id),
+            AnyGameEvent::PlayerCursorMoved(ref mut event) => event.player_id = Some(id),
+            _ => (),
+        }
     }
 }
 
@@ -87,15 +96,15 @@ impl GameEvent for PieceConnectionEvent {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-pub struct CursorMovedEvent {
+pub struct PlayerCursorMovedEvent {
     pub player_id: Option<Uuid>,
     pub x: f32,
     pub y: f32,
 }
 
-impl GameEvent for CursorMovedEvent {
+impl GameEvent for PlayerCursorMovedEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::CursorMoved(*self).serialize()
+        AnyGameEvent::PlayerCursorMoved(*self).serialize()
     }
 }
 

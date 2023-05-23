@@ -477,13 +477,13 @@ impl Puzzle {
                 self.cursors.remove(&event.player_id);
                 vec![PlayerDisconnected(event)]
             }
-            CursorMoved(event) => {
+            PlayerCursorMoved(event) => {
                 if let Some(player_id) = event.player_id {
                     if let Some(mut cursor) = self.cursors.get_mut(&player_id) {
                         cursor.x = event.x;
                         cursor.y = event.y;
                     }
-                    return vec![CursorMoved(event)];
+                    return vec![PlayerCursorMoved(event)];
                 }
                 Vec::new()
             }

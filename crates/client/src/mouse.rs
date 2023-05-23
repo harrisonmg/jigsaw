@@ -28,16 +28,9 @@ impl Plugin for MousePlugin {
             .add_systems(Update, world_cursor.run_if(in_state(AppState::Playing)))
             .add_systems(
                 Update,
-                pan.run_if(in_state(AppState::Playing)).after(world_cursor),
-            )
-            .add_systems(
-                Update,
                 zoom.run_if(in_state(AppState::Playing)).after(world_cursor),
             )
-            .add_systems(
-                Update,
-                click_piece.run_if(in_state(AppState::Playing)).after(pan),
-            )
+            .add_systems(Update, click_piece.run_if(in_state(AppState::Playing)))
             .add_systems(
                 Update,
                 drag_piece
@@ -50,31 +43,24 @@ impl Plugin for MousePlugin {
 fn world_cursor(
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut world_cursor_moved_events: EventWriter<WorldCursorMoved>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    mut world_cursor_pos: ResMut<WorldCursorPosition>,
-) {
-    for event in cursor_moved_events.iter() {
-        let (camera, camera_transform) = camera_query.single();
-        if let Some(new_world_pos) = camera.viewport_to_world_2d(camera_transform, event.position) {
-            let world_cursor_delta = new_world_pos - world_cursor_pos.0;
-            world_cursor_moved_events.send(WorldCursorMoved(world_cursor_delta));
-
-            world_cursor_pos.0 = new_world_pos;
-        }
-    }
-}
-
-fn pan(
-    mut world_cursor_moved_events: EventReader<WorldCursorMoved>,
-    mut camera_query: Query<&mut Transform, With<Camera>>,
+    mut camera_query: Query<(&Camera, &GlobalTransform, &mut Transform)>,
     mouse_buttons: Res<Input<MouseButton>>,
     mut world_cursor_pos: ResMut<WorldCursorPosition>,
 ) {
-    if mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
-        let mut camera_transform = camera_query.single_mut();
-        for event in world_cursor_moved_events.iter() {
-            camera_transform.translation -= event.0.extend(0.0);
-            world_cursor_pos.0 -= event.0;
+    for event in cursor_moved_events.iter() {
+        let (camera, camera_global_transform, mut camera_transform) = camera_query.single_mut();
+        if let Some(new_world_pos) =
+            camera.viewport_to_world_2d(camera_global_transform, event.position)
+        {
+            if new_world_pos != world_cursor_pos.0 {
+                let world_cursor_delta = new_world_pos - world_cursor_pos.0;
+                if mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
+                    camera_transform.translation -= world_cursor_delta.extend(0.0);
+                } else {
+                    world_cursor_moved_events.send(WorldCursorMoved(world_cursor_delta));
+                    world_cursor_pos.0 = new_world_pos;
+                }
+            }
         }
     }
 }
