@@ -1,7 +1,5 @@
 # TODO
 
-- winit (or fork) might disable context menu by default now
-
 - cursors
 - server admin features
 

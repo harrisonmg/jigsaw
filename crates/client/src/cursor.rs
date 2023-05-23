@@ -19,9 +19,9 @@ pub struct WorldCursorPosition(pub Vec2);
 
 pub struct WorldCursorMoved(pub Vec2);
 
-pub struct WorldCursorPlugin;
+pub struct MousePlugin;
 
-impl Plugin for WorldCursorPlugin {
+impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<WorldCursorMoved>()
             .insert_resource(WorldCursorPosition(Vec2::ZERO))

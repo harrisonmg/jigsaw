@@ -88,23 +88,6 @@ async fn client_handler(
     let client_id = Uuid::new_v4();
     let client_color = random_color();
 
-    event_tx
-        .send(ServerGameEvent {
-            client_id,
-            game_event: AnyGameEvent::PlayerConnected(PlayerConnectedEvent {
-                player_id: client_id,
-                cursor: game::Cursor {
-                    color: client_color,
-                    x: 0.0,
-                    y: 0.0,
-                    // TODO: origin initial cursor location not good maybe
-                    //x: f32::INFINITY,
-                    //y: f32::INFINITY,
-                },
-            }),
-        })
-        .unwrap();
-
     println!("Client {client_id} connected");
 
     let (mut ws_tx, mut ws_rx) = ws.split();
@@ -117,6 +100,23 @@ async fn client_handler(
 
     // receive client events and forward them to server event handler
     let client_rx_handler = async move {
+        event_tx
+            .send(ServerGameEvent {
+                client_id,
+                game_event: AnyGameEvent::PlayerConnected(PlayerConnectedEvent {
+                    player_id: client_id,
+                    cursor: game::Cursor {
+                        color: client_color,
+                        x: 0.0,
+                        y: 0.0,
+                        // TODO: origin initial cursor location not good maybe
+                        //x: f32::INFINITY,
+                        //y: f32::INFINITY,
+                    },
+                }),
+            })
+            .unwrap();
+
         while let Some(result) = ws_rx.next().await {
             let msg = match result {
                 Ok(msg) => msg,
@@ -174,5 +174,5 @@ async fn client_handler(
 fn random_color() -> Color {
     let mut rng = rand::thread_rng();
     let val: u32 = rng.gen_range(0..0xFFFFFF);
-    Color::hex(format!("{val:x}")).unwrap()
+    Color::hex(format!("{val:06x}")).unwrap()
 }

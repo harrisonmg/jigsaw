@@ -1,5 +1,4 @@
 use bevy::{
-    pbr::wireframe::Wireframe,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     sprite::MaterialMesh2dBundle,
@@ -8,6 +7,8 @@ use bevy::{
 use game::{Cursor, CursorMovedEvent, PlayerConnectedEvent, PlayerDisconnectedEvent, Puzzle, Uuid};
 
 use crate::states::AppState;
+
+const CURSOR_SIZE_RATIO: f32 = 0.4;
 
 pub struct PlayersPlugin;
 
@@ -29,23 +30,27 @@ pub struct CursorComponent {}
 #[derive(Bundle)]
 pub struct CursorBundle {
     cursor: CursorComponent,
-    wireframe: Wireframe,
     mesh_bundle: MaterialMesh2dBundle<ColorMaterial>,
 }
 
 fn add_cursor(
     cursor: &Cursor,
     player_id: Uuid,
-    _puzzle: &Puzzle, // TODO: use piece size to determine cursor size
+    puzzle: &Puzzle,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<ColorMaterial>,
     cursor_map: &mut CursorMap,
     commands: &mut Commands,
 ) {
+    let cursor_size = puzzle.piece_width().min(puzzle.piece_height()) as f32 * CURSOR_SIZE_RATIO;
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
-        vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]],
+        vec![
+            [cursor_size, 0.0, 0.0],
+            [0.0, cursor_size, 0.0],
+            [cursor_size, cursor_size, 0.0],
+        ],
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[0.0, 0.0, 0.0, 1.0]; 3]);
     mesh.set_indices(Some(Indices::U32(vec![0, 1, 2])));
@@ -60,7 +65,6 @@ fn add_cursor(
             material,
             ..Default::default()
         },
-        wireframe: Wireframe {},
     };
 
     let entity = commands.spawn(bundle).id();

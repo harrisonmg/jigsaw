@@ -1,7 +1,5 @@
 use bevy::diagnostic::LogDiagnosticsPlugin;
-use bevy::pbr::wireframe::{Wireframe, WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
-use bevy::render::{render_resource::WgpuFeatures, settings::WgpuSettings, RenderPlugin};
 use bevy::sprite::Material2dPlugin;
 
 use game::Puzzle;
@@ -10,12 +8,13 @@ automod::dir!("src/");
 
 use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
-use cursor::WorldCursorPlugin;
+use cursor::MousePlugin;
 use disable_context_menu::DisableContextMenuPlugin;
 use help::HelpPlugin;
 use material::PieceMaterial;
 use network::NetworkPlugin;
 use pieces::PiecePlugin;
+use players::PlayersPlugin;
 use states::AppState;
 use viewport::get_viewport_size;
 
@@ -31,21 +30,15 @@ fn main() {
                         ..Default::default()
                     }),
                     ..Default::default()
-                })
-                .set(RenderPlugin {
-                    wgpu_settings: WgpuSettings {
-                        features: WgpuFeatures::POLYGON_MODE_LINE,
-                        ..default()
-                    },
                 }),
         )
-        .add_plugin(WireframePlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(DisableContextMenuPlugin)
-        .add_plugin(WorldCursorPlugin)
+        .add_plugin(MousePlugin)
         .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_plugin(NetworkPlugin)
+        .add_plugin(PlayersPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)
         .add_plugin(HelpPlugin)
