@@ -5,8 +5,7 @@ use futures_util::future::join;
 use futures_util::{SinkExt, StreamExt};
 use game::{
     AnyGameEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent,
-    PiecePutDownEvent, PlayerConnectedEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent,
-    Puzzle,
+    PiecePutDownEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
 };
 use ws_stream_wasm::{WsMessage, WsMeta};
 
@@ -21,9 +20,8 @@ impl Plugin for NetworkPlugin {
             .add_event::<PiecePickedUpEvent>()
             .add_event::<PiecePutDownEvent>()
             .add_event::<PieceConnectionEvent>()
-            .add_event::<PlayerConnectedEvent>()
-            .add_event::<PlayerDisconnectedEvent>()
             .add_event::<PlayerCursorMovedEvent>()
+            .add_event::<PlayerDisconnectedEvent>()
             .add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
             .add_systems(Update, load_puzzle.run_if(in_state(AppState::Loading)))
             .add_systems(Update, event_io.run_if(in_state(AppState::Playing)));
@@ -63,9 +61,10 @@ fn load_puzzle(
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     while let Ok(msg) = network_io.output.try_recv() {
-        let puzzle = Puzzle::deserialize(msg.as_str());
-        commands.insert_resource(puzzle);
-        next_state.set(AppState::Setup);
+        if let Ok(puzzle) = Puzzle::deserialize(msg.as_str()) {
+            commands.insert_resource(puzzle);
+            next_state.set(AppState::Setup);
+        }
     }
 }
 
@@ -83,14 +82,11 @@ fn event_io(
     mut piece_connection_events: ResMut<Events<PieceConnectionEvent>>,
     mut piece_connection_reader: Local<ManualEventReader<PieceConnectionEvent>>,
 
-    mut player_connected_events: ResMut<Events<PlayerConnectedEvent>>,
-    mut player_connected_reader: Local<ManualEventReader<PlayerConnectedEvent>>,
+    mut player_cursor_moved_events: ResMut<Events<PlayerCursorMovedEvent>>,
+    mut player_cursor_moved_reader: Local<ManualEventReader<PlayerCursorMovedEvent>>,
 
     mut player_disconnected_events: ResMut<Events<PlayerDisconnectedEvent>>,
     mut player_disconnected_reader: Local<ManualEventReader<PlayerDisconnectedEvent>>,
-
-    mut player_cursor_moved_events: ResMut<Events<PlayerCursorMovedEvent>>,
-    mut player_cursor_moved_reader: Local<ManualEventReader<PlayerCursorMovedEvent>>,
 
     mut network_io: ResMut<NetworkIO>,
     mut puzzle: ResMut<Puzzle>,
@@ -110,13 +106,10 @@ fn event_io(
     for event in piece_connection_reader.iter(&piece_connection_events) {
         network_io.input.send(event.serialize()).unwrap();
     }
-    for event in player_connected_reader.iter(&player_connected_events) {
+    for event in player_cursor_moved_reader.iter(&player_cursor_moved_events) {
         network_io.input.send(event.serialize()).unwrap();
     }
     for event in player_disconnected_reader.iter(&player_disconnected_events) {
-        network_io.input.send(event.serialize()).unwrap();
-    }
-    for event in player_cursor_moved_reader.iter(&player_cursor_moved_events) {
         network_io.input.send(event.serialize()).unwrap();
     }
 
@@ -134,9 +127,8 @@ fn event_io(
             PiecePickedUp(event) => piece_picked_up_events.send(event),
             PiecePutDown(event) => piece_put_down_events.send(event),
             PieceConnection(event) => piece_connection_events.send(event),
-            PlayerConnected(event) => player_connected_events.send(event),
-            PlayerDisconnected(event) => player_disconnected_events.send(event),
             PlayerCursorMoved(event) => player_cursor_moved_events.send(event),
+            PlayerDisconnected(event) => player_disconnected_events.send(event),
         }
     }
 
@@ -145,7 +137,6 @@ fn event_io(
     piece_picked_up_reader.clear(&piece_picked_up_events);
     piece_put_down_reader.clear(&piece_put_down_events);
     piece_connection_reader.clear(&piece_connection_events);
-    player_connected_reader.clear(&player_connected_events);
-    player_disconnected_reader.clear(&player_disconnected_events);
     player_cursor_moved_reader.clear(&player_cursor_moved_events);
+    player_disconnected_reader.clear(&player_disconnected_events);
 }

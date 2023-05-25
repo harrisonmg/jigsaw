@@ -13,9 +13,8 @@ pub enum AnyGameEvent {
     PiecePickedUp(PiecePickedUpEvent),
     PiecePutDown(PiecePutDownEvent),
     PieceConnection(PieceConnectionEvent),
-    PlayerConnected(PlayerConnectedEvent),
-    PlayerDisconnected(PlayerDisconnectedEvent),
     PlayerCursorMoved(PlayerCursorMovedEvent),
+    PlayerDisconnected(PlayerDisconnectedEvent),
 }
 
 impl AnyGameEvent {
@@ -98,25 +97,12 @@ impl GameEvent for PieceConnectionEvent {
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct PlayerCursorMovedEvent {
     pub player_id: Option<Uuid>,
-    pub x: f32,
-    pub y: f32,
+    pub cursor: Cursor,
 }
 
 impl GameEvent for PlayerCursorMovedEvent {
     fn serialize(&self) -> String {
         AnyGameEvent::PlayerCursorMoved(*self).serialize()
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-pub struct PlayerConnectedEvent {
-    pub player_id: Uuid,
-    pub cursor: Cursor,
-}
-
-impl GameEvent for PlayerConnectedEvent {
-    fn serialize(&self) -> String {
-        AnyGameEvent::PlayerConnected(*self).serialize()
     }
 }
 

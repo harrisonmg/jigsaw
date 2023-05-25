@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use anyhow::Result;
 use bevy::{prelude::Vec3, transform::components::Transform, utils::HashMap};
 use image::RgbaImage;
 use rand::prelude::*;
@@ -36,9 +37,6 @@ pub struct Puzzle {
 
     #[serde(with = "any_key_map")]
     held_pieces: HashMap<Uuid, PieceIndex>,
-
-    #[serde(with = "any_key_map")]
-    cursors: HashMap<Uuid, Cursor>,
 
     groups: Vec<Group>,
 }
@@ -88,7 +86,6 @@ impl Puzzle {
         let piece_map = HashMap::new();
         let held_pieces = HashMap::new();
         let groups = Vec::new();
-        let cursors = HashMap::new();
 
         let mut puzzle = Self {
             image: crate::image::Image::empty(),
@@ -99,7 +96,6 @@ impl Puzzle {
             piece_map,
             held_pieces,
             groups,
-            cursors,
         };
 
         let mut rng = rand::thread_rng();
@@ -147,8 +143,8 @@ impl Puzzle {
         serde_json::to_string(self).unwrap()
     }
 
-    pub fn deserialize(value: &str) -> Self {
-        serde_json::from_str(value).unwrap()
+    pub fn deserialize(value: &str) -> Result<Self> {
+        serde_json::from_str(value).map_err(anyhow::Error::from)
     }
 
     pub fn image(&self) -> crate::image::Image {
@@ -161,10 +157,6 @@ impl Puzzle {
 
     pub fn num_rows(&self) -> u8 {
         self.num_rows
-    }
-
-    pub fn cursors(&self) -> &HashMap<Uuid, Cursor> {
-        &self.cursors
     }
 
     pub fn piece(&self, index: &PieceIndex) -> Option<&Piece> {
@@ -468,24 +460,11 @@ impl Puzzle {
                 }
                 new_events
             }
-            PlayerConnected(event) => {
-                self.cursors.insert(event.player_id, event.cursor);
-                vec![PlayerConnected(event)]
+            PlayerCursorMoved(event) => {
+                vec![PlayerCursorMoved(event)]
             }
             PlayerDisconnected(event) => {
-                self.held_pieces.remove(&event.player_id);
-                self.cursors.remove(&event.player_id);
                 vec![PlayerDisconnected(event)]
-            }
-            PlayerCursorMoved(event) => {
-                if let Some(player_id) = event.player_id {
-                    if let Some(mut cursor) = self.cursors.get_mut(&player_id) {
-                        cursor.x = event.x;
-                        cursor.y = event.y;
-                    }
-                    return vec![PlayerCursorMoved(event)];
-                }
-                Vec::new()
             }
         }
     }

@@ -4,9 +4,9 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
     utils::HashMap,
 };
-use game::{
-    Cursor, PlayerConnectedEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle, Uuid,
-};
+use rand::Rng;
+
+use game::{Cursor, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle, Uuid};
 
 use crate::states::AppState;
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     pieces::MAX_PIECE_HEIGHT,
 };
 
-const CURSOR_SIZE_RATIO: f32 = 0.4;
+const CURSOR_SIZE_RATIO: f32 = 0.6;
 const CURSOR_HEIGHT: f32 = MAX_PIECE_HEIGHT + 1.0;
 
 pub struct CursorPlugin;
@@ -22,14 +22,13 @@ pub struct CursorPlugin;
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::Setup), player_cursors_setup)
-            .add_systems(Update, player_connected.run_if(in_state(AppState::Playing)))
-            .add_systems(
-                Update,
-                player_disconnected.run_if(in_state(AppState::Playing)),
-            )
             .add_systems(
                 Update,
                 player_cursor_moved.run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(
+                Update,
+                player_disconnected.run_if(in_state(AppState::Playing)),
             )
             .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)));
     }
@@ -58,12 +57,15 @@ fn add_cursor(
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
         vec![
-            [cursor_size, 0.0, 0.0],
-            [0.0, cursor_size, 0.0],
-            [cursor_size, cursor_size, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, -cursor_size, 0.0],
+            [
+                cursor_size * std::f32::consts::FRAC_1_SQRT_2,
+                -cursor_size * std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+            ],
         ],
     );
-    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[0.0, 0.0, 0.0, 1.0]; 3]);
     mesh.set_indices(Some(Indices::U32(vec![0, 1, 2])));
     let mesh_handle = meshes.add(mesh);
 
@@ -86,45 +88,48 @@ fn add_cursor(
 #[derive(Resource)]
 pub struct CursorMap(HashMap<Uuid, Entity>);
 
-fn player_cursors_setup(
-    puzzle: Res<Puzzle>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut commands: Commands,
-) {
-    let mut map = CursorMap(HashMap::new());
-    for (id, cursor) in puzzle.cursors().iter() {
-        add_cursor(
-            cursor,
-            id.clone(),
-            puzzle.as_ref(),
-            meshes.as_mut(),
-            materials.as_mut(),
-            &mut map,
-            &mut commands,
-        );
-    }
-    commands.insert_resource(map);
+#[derive(Resource)]
+pub struct CursorColor(Color);
+
+fn random_color() -> Color {
+    let mut rng = rand::thread_rng();
+    let val: u32 = rng.gen_range(0..0xFFFFFF);
+    Color::hex(format!("{val:06x}")).unwrap()
 }
 
-fn player_connected(
-    mut player_connected_events: EventReader<PlayerConnectedEvent>,
+fn player_cursors_setup(mut commands: Commands) {
+    commands.insert_resource(CursorMap(HashMap::new()));
+    commands.insert_resource(CursorColor(random_color()));
+}
+
+fn player_cursor_moved(
+    mut cursor_moved_events: EventReader<PlayerCursorMovedEvent>,
+    mut cursor_map: ResMut<CursorMap>,
+    mut cursor_query: Query<&mut Transform, With<CursorComponent>>,
     puzzle: Res<Puzzle>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut cursor_map: ResMut<CursorMap>,
     mut commands: Commands,
 ) {
-    for event in player_connected_events.iter() {
-        add_cursor(
-            &event.cursor,
-            event.player_id,
-            puzzle.as_ref(),
-            meshes.as_mut(),
-            materials.as_mut(),
-            cursor_map.as_mut(),
-            &mut commands,
-        );
+    for event in cursor_moved_events.iter() {
+        if let Some(player_id) = event.player_id {
+            if let Some(entity) = cursor_map.0.get(&player_id) {
+                let mut transform = cursor_query.get_mut(*entity).unwrap();
+                transform.translation.x = event.cursor.x;
+                transform.translation.y = event.cursor.y;
+                transform.translation.z = CURSOR_HEIGHT
+            } else {
+                add_cursor(
+                    &event.cursor,
+                    player_id,
+                    puzzle.as_ref(),
+                    meshes.as_mut(),
+                    materials.as_mut(),
+                    &mut cursor_map,
+                    &mut commands,
+                )
+            }
+        }
     }
 }
 
@@ -141,32 +146,20 @@ fn player_disconnected(
     }
 }
 
-fn player_cursor_moved(
-    mut cursor_moved_events: EventReader<PlayerCursorMovedEvent>,
-    cursor_map: ResMut<CursorMap>,
-    mut cursor_query: Query<&mut Transform, With<CursorComponent>>,
-) {
-    for event in cursor_moved_events.iter() {
-        if let Some(player_id) = event.player_id {
-            let entity = cursor_map.0.get(&player_id).unwrap();
-            let mut transform = cursor_query.get_mut(*entity).unwrap();
-            transform.translation.x = event.x;
-            transform.translation.y = event.y;
-            transform.translation.z = CURSOR_HEIGHT
-        }
-    }
-}
-
 fn mouse_moved(
     world_cursor_moved_events: EventReader<WorldCursorMoved>,
     mut cursor_moved_events: EventWriter<PlayerCursorMovedEvent>,
     world_cursor_pos: Res<WorldCursorPosition>,
+    cursor_color: Res<CursorColor>,
 ) {
     if !world_cursor_moved_events.is_empty() {
         cursor_moved_events.send(PlayerCursorMovedEvent {
             player_id: None,
-            x: world_cursor_pos.0.x,
-            y: world_cursor_pos.0.y,
+            cursor: Cursor {
+                color: cursor_color.0,
+                x: world_cursor_pos.0.x,
+                y: world_cursor_pos.0.y,
+            },
         });
     }
 }

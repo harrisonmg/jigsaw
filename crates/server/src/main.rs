@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
-use rand::Rng;
+use log::info;
 use tokio::sync::{
     broadcast::{self, Receiver},
     mpsc::{unbounded_channel, UnboundedSender},
@@ -14,7 +14,7 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-use game::{AnyGameEvent, Color, PlayerConnectedEvent, PlayerDisconnectedEvent, Puzzle};
+use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
 
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
 
@@ -26,6 +26,8 @@ struct ServerGameEvent {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let puzzle = Arc::new(RwLock::new(load_puzzle().await));
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
@@ -86,34 +88,17 @@ async fn client_handler(
     mut event_rx: Receiver<ServerGameEvent>,
 ) {
     let client_id = Uuid::new_v4();
-    let client_color = random_color();
 
-    println!("Client {client_id} connected");
+    info!("Client {client_id} connected");
 
     let (mut ws_tx, mut ws_rx) = ws.split();
 
     // first, send the puzzle
-    ws_tx
-        .send(Message::text(&*puzzle.read().await.serialize()))
-        .await
-        .unwrap();
+    let msg = Message::text(&*puzzle.read().await.serialize());
+    ws_tx.send(msg).await.unwrap();
 
     // receive client events and forward them to server event handler
     let client_rx_handler = async move {
-        event_tx
-            .send(ServerGameEvent {
-                client_id,
-                game_event: AnyGameEvent::PlayerConnected(PlayerConnectedEvent {
-                    player_id: client_id,
-                    cursor: game::Cursor {
-                        color: client_color,
-                        x: 0.0,
-                        y: 0.0,
-                    },
-                }),
-            })
-            .unwrap();
-
         while let Some(result) = ws_rx.next().await {
             let msg = match result {
                 Ok(msg) => msg,
@@ -169,10 +154,4 @@ async fn client_handler(
     };
 
     join(client_rx_handler, client_tx_handler).await;
-}
-
-fn random_color() -> Color {
-    let mut rng = rand::thread_rng();
-    let val: u32 = rng.gen_range(0..0xFFFFFF);
-    Color::hex(format!("{val:06x}")).unwrap()
 }

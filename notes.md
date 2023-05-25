@@ -1,7 +1,7 @@
 # TODO
 
 - cursors
-    - color and shape kinda messed up
+    - outline?
 
 - server admin features
     - at least turn image link into a CLI arg
