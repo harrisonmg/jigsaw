@@ -10,7 +10,7 @@ use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
 use cursors::CursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
-use help::HelpPlugin;
+use ui::UiPlugin;
 use material::PieceMaterial;
 use mouse::MousePlugin;
 use network::NetworkPlugin;
@@ -41,7 +41,7 @@ fn main() {
         .add_plugin(CursorPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)
-        .add_plugin(HelpPlugin)
+        .add_plugin(UiPlugin)
         .add_state::<AppState>()
         .add_systems(OnEnter(AppState::Setup), setup)
         .add_systems(Update, center_camera.run_if(in_state(AppState::Playing)))

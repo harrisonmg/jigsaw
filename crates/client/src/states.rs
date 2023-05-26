@@ -6,4 +6,5 @@ pub enum AppState {
     Loading,
     Setup,
     Playing,
+    ConnectionLost,
 }

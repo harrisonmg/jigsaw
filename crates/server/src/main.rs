@@ -20,7 +20,7 @@ use warp::{
 use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
 
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(5);
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
 #[derive(Debug, Clone, Copy)]
 struct ServerGameEvent {
