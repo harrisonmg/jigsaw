@@ -42,13 +42,14 @@ async fn main() {
     );
 
     let args = Args::parse();
-    let puzzle = load_puzzle(args.image_url.as_str()).await.expect(
-        format!(
-            "Error loading puzzle\n\nIs \"{}\" the correct image URL?\n\nUnderlying error",
-            args.image_url
-        )
-        .as_str(),
-    );
+    let puzzle = load_puzzle(args.image_url.as_str())
+        .await
+        .unwrap_or_else(|e| {
+            panic!(
+                "Error loading puzzle\n\nIs \"{}\" the correct image URL?\n\nUnderlying error: {e}",
+                args.image_url
+            )
+        });
     let puzzle = Arc::new(RwLock::new(puzzle));
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);

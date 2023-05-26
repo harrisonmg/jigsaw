@@ -7,6 +7,7 @@ use game::{
     AnyGameEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent,
     PiecePutDownEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
 };
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot;
 use ws_stream_wasm::{WsMessage, WsMeta};
 
@@ -34,9 +35,13 @@ type NetworkIO = Worker<String, String>;
 fn spawn_network_io_task(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let io = NetworkIO::spawn(thread_pool, |mut client_rx, client_tx| async move {
-        let (_, ws_io) = WsMeta::connect("ws://127.0.0.1:3030/client", None)
-            .await
-            .unwrap();
+        let ws_io = match WsMeta::connect("ws://127.0.0.1:3030/client", None).await {
+            Ok((_, ws_io)) => ws_io,
+            Err(_) => {
+                return;
+            }
+        };
+
         let (mut ws_tx, mut ws_rx) = ws_io.split();
         let (dc_tx, dc_rx) = oneshot::channel();
 
@@ -77,11 +82,18 @@ fn load_puzzle(
     mut network_io: ResMut<NetworkIO>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
-    while let Ok(msg) = network_io.output.try_recv() {
-        if let Ok(puzzle) = Puzzle::deserialize(msg.as_str()) {
-            commands.insert_resource(puzzle);
-            next_state.set(AppState::Setup);
+    match network_io.output.try_recv() {
+        Ok(msg) => {
+            if let Ok(puzzle) = Puzzle::deserialize(msg.as_str()) {
+                commands.insert_resource(puzzle);
+                next_state.set(AppState::Setup);
+            }
         }
+        Err(e) => match e {
+            TryRecvError::Empty => (),
+            TryRecvError::Disconnected => (), // TODO something here? hard to handle when not even the camera is loaded
+                                              // Maybe the loading screen will help. Could be a good reason to do it in engine.
+        },
     }
 }
 
