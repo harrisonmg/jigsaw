@@ -1,5 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
+use anyhow::Result;
+use clap::Parser;
 use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
@@ -28,13 +30,26 @@ struct ServerGameEvent {
     pub game_event: AnyGameEvent,
 }
 
+#[derive(Parser)]
+struct Args {
+    image_url: String,
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
-    let puzzle = Arc::new(RwLock::new(load_puzzle().await));
+    let args = Args::parse();
+    let puzzle = load_puzzle(args.image_url.as_str()).await.expect(
+        format!(
+            "Error loading puzzle\n\nIs \"{}\" the correct image URL?\n\nUnderlying error",
+            args.image_url
+        )
+        .as_str(),
+    );
+    let puzzle = Arc::new(RwLock::new(puzzle));
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
 
@@ -49,7 +64,7 @@ async fn main() {
         .and_then(ws_handler);
 
     // serve that shit up
-    let serve = warp::serve(routes).run(([127, 0, 0, 1], 3030));
+    let serve = warp::serve(routes).run(([0, 0, 0, 0], 3030));
 
     // apply events to the puzzle and dispatch the generated events to clients
     let event_handler = async move {
@@ -69,13 +84,12 @@ async fn main() {
     join(serve, event_handler).await;
 }
 
-async fn load_puzzle() -> Puzzle {
-    let response = reqwest::get("https://m.media-amazon.com/images/W/IMAGERENDERING_521856-T1/images/I/71tNdtNw70L._UF1000,1000_QL80_.jpg");
-    let bytes = response.await.unwrap().bytes().await.unwrap();
-    let image = image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
-        .unwrap()
-        .to_rgba8();
-    Puzzle::new(image, 36, true)
+async fn load_puzzle(image_url: &str) -> Result<Puzzle> {
+    let response = reqwest::get(image_url);
+    let bytes = response.await?.bytes().await?;
+    let image =
+        image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)?.to_rgba8();
+    Ok(Puzzle::new(image, 36, true))
 }
 
 async fn ws_handler(

@@ -1,7 +1,9 @@
 # TODO
 
-- server admin features
-    - at least turn image link into a CLI arg
+- loading screen
+
+- something on puzzle completion
+    - rainbow cursor?
 
 - throttle cursor and piece move events?
     - load test first

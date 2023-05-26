@@ -10,7 +10,7 @@ use crate::{image::Sprite, Puzzle};
 const TAB_LENGTH_RATIO: f64 = 0.30;
 const TAB_OUTER_SIZE_RATIO: f64 = 0.36;
 const TAB_INNER_SIZE_RATIO: f64 = 0.22;
-const PIECE_OVERSIZE_DENOM: u32 = 200;
+const PIECE_OVERSIZE_DENOM: u32 = 100;
 const SHADOW_STROKE_DENOM: f64 = 15.0;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]

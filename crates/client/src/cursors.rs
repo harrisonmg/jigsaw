@@ -114,10 +114,11 @@ fn player_cursor_moved(
     for event in cursor_moved_events.iter() {
         if let Some(player_id) = event.player_id {
             if let Some(entity) = cursor_map.0.get(&player_id) {
-                let mut transform = cursor_query.get_mut(*entity).unwrap();
-                transform.translation.x = event.cursor.x;
-                transform.translation.y = event.cursor.y;
-                transform.translation.z = CURSOR_HEIGHT
+                if let Ok(mut transform) = cursor_query.get_mut(*entity) {
+                    transform.translation.x = event.cursor.x;
+                    transform.translation.y = event.cursor.y;
+                    transform.translation.z = CURSOR_HEIGHT
+                }
             } else {
                 add_cursor(
                     &event.cursor,
@@ -141,8 +142,8 @@ fn player_disconnected(
     for event in player_disconnected_events.iter() {
         if let Some(entity) = cursor_map.0.get(&event.player_id) {
             commands.get_entity(*entity).unwrap().despawn_recursive();
+            cursor_map.0.remove(&event.player_id);
         }
-        cursor_map.0.remove(&event.player_id);
     }
 }
 
