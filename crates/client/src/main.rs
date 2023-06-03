@@ -10,12 +10,12 @@ use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
 use cursors::CursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
-use ui::UiPlugin;
 use material::PieceMaterial;
 use mouse::MousePlugin;
 use network::NetworkPlugin;
 use pieces::PiecePlugin;
 use states::AppState;
+use ui::UiPlugin;
 use viewport::get_viewport_size;
 
 fn main() {
@@ -43,18 +43,22 @@ fn main() {
         .add_plugin(BoardPlugin)
         .add_plugin(UiPlugin)
         .add_state::<AppState>()
+        .add_systems(OnEnter(AppState::Loading), load)
         .add_systems(OnEnter(AppState::Setup), setup)
         .add_systems(Update, center_camera.run_if(in_state(AppState::Playing)))
         .run();
 }
 
-fn setup(puzzle: Res<Puzzle>, mut commands: Commands) {
+fn load(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+}
+
+fn setup(puzzle: Res<Puzzle>, mut projection_query: Query<&mut OrthographicProjection>) {
     let puzzle_size = Vec2::new(puzzle.width() as f32, puzzle.height() as f32);
     let small_side = puzzle_size.min_element();
     let initial_zoom = 3.0 * small_side / Vec2::from(get_viewport_size());
-    let mut camera = Camera2dBundle::default();
-    camera.projection.scale = initial_zoom.min_element();
-    commands.spawn(camera);
+    let mut proj = projection_query.get_single_mut().unwrap();
+    proj.scale = initial_zoom.min_element();
 }
 
 fn center_camera(
