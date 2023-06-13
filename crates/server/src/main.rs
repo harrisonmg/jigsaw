@@ -116,6 +116,7 @@ async fn client_handler(
 
     // first, send the puzzle
     let msg = Message::text(&*puzzle.read().await.serialize());
+
     if ws_tx.send(msg).await.is_err() {
         info!("client {client_id} disconnected");
         return;

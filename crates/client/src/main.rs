@@ -1,4 +1,4 @@
-use bevy::diagnostic::LogDiagnosticsPlugin;
+use bevy::log::LogPlugin;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 
@@ -19,6 +19,14 @@ use ui::UiPlugin;
 use viewport::get_viewport_size;
 
 fn main() {
+    let mut log_plugin = LogPlugin::default();
+
+    #[cfg(debug_assertions)]
+    {
+        log_plugin.level = bevy::log::Level::DEBUG;
+        log_plugin.filter = "warn,client=debug".into();
+    }
+
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -30,9 +38,9 @@ fn main() {
                         ..Default::default()
                     }),
                     ..Default::default()
-                }),
+                })
+                .set(log_plugin),
         )
-        .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(DisableContextMenuPlugin)
         .add_plugin(MousePlugin)
         .add_plugin(TweeningPlugin)
