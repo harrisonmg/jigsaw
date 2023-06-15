@@ -74,7 +74,7 @@ impl Puzzle {
         }
 
         // crop pixels from right and bottom of image to make size multiple of piece size
-        let mut image: image::RgbaImage = image::imageops::crop(
+        let image: image::RgbaImage = image::imageops::crop(
             &mut image,
             0,
             0,
@@ -108,7 +108,7 @@ impl Puzzle {
         for row in 0..num_rows {
             for col in 0..num_cols {
                 let index = PieceIndex(row, col);
-                let mut piece = Piece::new(&puzzle, index, puzzle.groups.len(), &mut image);
+                let mut piece = Piece::new(&puzzle, index, puzzle.groups.len());
 
                 if randomize_position {
                     let big_pos = (long_side_len + 2.0 * short_side_len) * (rng.gen::<f32>() - 0.5);

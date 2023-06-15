@@ -1,6 +1,6 @@
 # TODO
 
-- loading screen
+- cut puzzle too big to send, need to cut on client
 
 - something on puzzle completion
     - rainbow cursor?

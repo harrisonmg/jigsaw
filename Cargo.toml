@@ -5,10 +5,11 @@ members = ["crates/*"]
 
 # profiles for bevy
 [profile.dev]
-opt-level = 1
+opt-level = 0
+debug = true
 
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 0
 
 [patch.crates-io]
 winit = { git = "https://github.com/JAD3N/winit", branch = "fix-web-mouse-events" }

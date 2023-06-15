@@ -228,23 +228,13 @@ impl PieceKind {
 pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
-    sprite: Sprite,
-    shadow_sprite: Sprite,
     pub(crate) transform: bevy::prelude::Transform,
     pub(crate) group_index: usize,
 }
 
 impl Piece {
-    pub fn new(
-        puzzle: &Puzzle,
-        index: PieceIndex,
-        group_index: usize,
-        image: &mut image::RgbaImage,
-    ) -> Self {
+    pub fn new(puzzle: &Puzzle, index: PieceIndex, group_index: usize) -> Self {
         let kind = PieceKind::new(&index, puzzle.num_cols(), puzzle.num_rows());
-
-        let (sprite, shadow_sprite) = Self::cut_sprite(index, puzzle, image, kind);
-
         let padding = puzzle.piece_width().max(puzzle.piece_height()) / 2;
         let initial_position = bevy::prelude::Vec3::new(
             index.1 as f32 * (puzzle.piece_height() + padding) as f32,
@@ -255,8 +245,6 @@ impl Piece {
         Piece {
             index,
             kind,
-            sprite,
-            shadow_sprite,
             transform: bevy::prelude::Transform::from_translation(initial_position),
             group_index,
         }
@@ -275,13 +263,8 @@ impl Piece {
         (tab_width * west_tab, tab_height * north_tab)
     }
 
-    fn cut_sprite(
-        index: PieceIndex,
-        puzzle: &Puzzle,
-        image: &mut image::RgbaImage,
-        kind: PieceKind,
-    ) -> (Sprite, Sprite) {
-        let PieceIndex(row, col) = index;
+    pub fn cut_sprites(&self, puzzle: &Puzzle, kind: PieceKind) -> (Sprite, Sprite) {
+        let PieceIndex(row, col) = self.index;
         let piece_width = puzzle.piece_width();
         let piece_height = puzzle.piece_height();
         let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
@@ -318,8 +301,9 @@ impl Piece {
         let sprite_origin_x: f64 = (piece_width / 2 + west_tab * tab_width + w_oversize).into();
         let sprite_origin_y: f64 = (piece_height / 2 + south_tab * tab_height + s_oversize).into();
 
+        let mut image: image::RgbaImage = puzzle.image().into();
         let mut crop = image::imageops::crop(
-            image,
+            &mut image,
             col as u32 * piece_width - tab_width * west_tab - w_oversize,
             row as u32 * piece_height - tab_height * north_tab - n_oversize,
             sprite_width,
@@ -553,30 +537,6 @@ impl Piece {
 
     pub fn kind(&self) -> PieceKind {
         self.kind
-    }
-
-    pub fn sprite_clone(&self) -> crate::image::Image {
-        self.sprite.image.clone()
-    }
-
-    pub fn shadow_sprite_clone(&self) -> crate::image::Image {
-        self.shadow_sprite.image.clone()
-    }
-
-    pub fn sprite_origin_x(&self) -> f64 {
-        self.sprite.origin_x
-    }
-
-    pub fn sprite_origin_y(&self) -> f64 {
-        self.sprite.origin_y
-    }
-
-    pub fn shadow_origin_x(&self) -> f64 {
-        self.shadow_sprite.origin_x
-    }
-
-    pub fn shadow_origin_y(&self) -> f64 {
-        self.shadow_sprite.origin_y
     }
 
     pub fn transform(&self) -> bevy::prelude::Transform {

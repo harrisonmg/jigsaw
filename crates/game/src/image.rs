@@ -37,6 +37,12 @@ impl From<image::RgbaImage> for Image {
     }
 }
 
+impl From<Image> for image::RgbaImage {
+    fn from(value: Image) -> Self {
+        Self::from_raw(value.width, value.height, value.raw).unwrap()
+    }
+}
+
 impl From<resvg::tiny_skia::Pixmap> for Image {
     fn from(value: resvg::tiny_skia::Pixmap) -> Self {
         Self {
