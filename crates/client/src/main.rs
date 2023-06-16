@@ -2,7 +2,10 @@ use bevy::log::LogPlugin;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 
-use game::Puzzle;
+use game::{
+    PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent, PiecePutDownEvent,
+    PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
+};
 
 automod::dir!("src/");
 
@@ -13,6 +16,7 @@ use disable_context_menu::DisableContextMenuPlugin;
 use material::PieceMaterial;
 use mouse::MousePlugin;
 use network::NetworkPlugin;
+//use loader::LoaderPlugin;
 use pieces::PiecePlugin;
 use states::AppState;
 use ui::UiPlugin;
@@ -46,11 +50,18 @@ fn main() {
         .add_plugin(TweeningPlugin)
         .add_plugin(Material2dPlugin::<PieceMaterial>::default())
         .add_plugin(NetworkPlugin)
+        //.add_plugin(LoaderPlugin)
         .add_plugin(CursorPlugin)
         .add_plugin(PiecePlugin)
         .add_plugin(BoardPlugin)
         .add_plugin(UiPlugin)
         .add_state::<AppState>()
+        .add_event::<PieceMovedEvent>()
+        .add_event::<PiecePickedUpEvent>()
+        .add_event::<PiecePutDownEvent>()
+        .add_event::<PieceConnectionEvent>()
+        .add_event::<PlayerCursorMovedEvent>()
+        .add_event::<PlayerDisconnectedEvent>()
         .add_systems(OnEnter(AppState::Loading), load)
         .add_systems(OnEnter(AppState::Setup), setup)
         .add_systems(Update, center_camera.run_if(in_state(AppState::Playing)))

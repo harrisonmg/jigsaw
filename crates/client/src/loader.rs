@@ -19,7 +19,8 @@ type PuzzleLoader = Worker<(), Puzzle>;
 fn spawn_load_task(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let loader = PuzzleLoader::spawn(thread_pool, |_, tx| async move {
-        let response = reqwest::get("https://m.media-amazon.com/images/W/IMAGERENDERING_521856-T1/images/I/71tNdtNw70L._UF1000,1000_QL80_.jpg");
+        let response =
+            reqwest::get("https://m.media-amazon.com/images/I/71tNdtNw70L._UF1000,1000_QL80_.jpg");
         let bytes = response.await.unwrap().bytes().await.unwrap();
         let image = image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
             .unwrap()

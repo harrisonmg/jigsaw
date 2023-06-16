@@ -5,7 +5,7 @@ use bevy::{
 };
 
 use bevy_tweening::Animator;
-use game::{Piece, PieceIndex, PieceMovedEvent, Puzzle};
+use game::{image::Sprite, Piece, PieceIndex, PieceMovedEvent, Puzzle};
 
 use crate::{
     animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
@@ -56,18 +56,13 @@ pub struct PieceBundle {
 impl PieceBundle {
     pub fn new(
         piece: &Piece,
+        sprite: Sprite,
         image_assets: &mut Assets<Image>,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<PieceMaterial>,
     ) -> Self {
-        let sprite = piece.sprite_clone();
-
-        let sprite_size = Vec2::new(sprite.width() as f32, sprite.height() as f32);
-
-        let sprite_origin = Vec2::new(
-            piece.sprite_origin_x() as f32,
-            piece.sprite_origin_y() as f32,
-        );
+        let sprite_size = Vec2::new(sprite.image.width() as f32, sprite.image.height() as f32);
+        let sprite_origin = Vec2::new(sprite.origin_x as f32, sprite.origin_y as f32);
 
         let piece_component = PieceComponent {
             index: piece.index(),
@@ -98,7 +93,7 @@ impl PieceBundle {
 
         let mesh_handle = meshes.add(mesh);
         let material = materials.add(PieceMaterial {
-            texture: image_assets.add(sprite.into()),
+            texture: image_assets.add(sprite.image.into()),
         });
 
         let mut transform = piece.transform();
@@ -159,15 +154,23 @@ fn piece_setup(
     let mut piece_stack = PieceStack(VecDeque::new());
 
     puzzle.with_pieces(|piece| {
-        let piece_bundle = PieceBundle::new(piece, &mut image_assets, &mut meshes, &mut materials);
+        let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref());
+        let piece_bundle = PieceBundle::new(
+            piece,
+            piece_sprite,
+            &mut image_assets,
+            &mut meshes,
+            &mut materials,
+        );
         let piece_entity = commands.spawn(piece_bundle).id();
 
-        let shadow_sprite = piece.shadow_sprite_clone();
-        let shadow_x_offset = shadow_sprite.width() as f32 / 2.0 - piece.shadow_origin_x() as f32;
-        let shadow_y_offset = shadow_sprite.height() as f32 / 2.0 - piece.shadow_origin_y() as f32;
+        let shadow_x_offset =
+            shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
+        let shadow_y_offset =
+            shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
         let shadow = SpriteBundle {
             transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
-            texture: image_assets.add(piece.shadow_sprite_clone().into()),
+            texture: image_assets.add(shadow_sprite.image.into()),
             ..Default::default()
         };
         let shadow_entity = commands.spawn(shadow).id();

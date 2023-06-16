@@ -3,7 +3,8 @@ resolver = "2"
 
 members = ["crates/*"]
 
-[profile.debug]
+[profile.debugging]
+inherits = "dev"
 opt-level = 0
 debug = true
 

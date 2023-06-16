@@ -263,13 +263,13 @@ impl Piece {
         (tab_width * west_tab, tab_height * north_tab)
     }
 
-    pub fn cut_sprites(&self, puzzle: &Puzzle, kind: PieceKind) -> (Sprite, Sprite) {
+    pub fn cut_sprites(&self, puzzle: &Puzzle) -> (Sprite, Sprite) {
         let PieceIndex(row, col) = self.index;
         let piece_width = puzzle.piece_width();
         let piece_height = puzzle.piece_height();
         let (tab_width, tab_height) = Piece::tab_size(piece_width, piece_height);
-        let (north_tab, south_tab, east_tab, west_tab) = kind.tabs();
-        let (north_blank, south_blank, east_blank, west_blank) = kind.blanks();
+        let (north_tab, south_tab, east_tab, west_tab) = self.kind.tabs();
+        let (north_blank, south_blank, east_blank, west_blank) = self.kind.blanks();
 
         let oversize = (piece_width.min(piece_height) / PIECE_OVERSIZE_DENOM).max(1);
         let mut n_oversize = 0;

@@ -18,13 +18,7 @@ pub struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<PieceMovedEvent>()
-            .add_event::<PiecePickedUpEvent>()
-            .add_event::<PiecePutDownEvent>()
-            .add_event::<PieceConnectionEvent>()
-            .add_event::<PlayerCursorMovedEvent>()
-            .add_event::<PlayerDisconnectedEvent>()
-            .add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
+        app.add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
             .add_systems(Update, load_puzzle.run_if(in_state(AppState::Loading)))
             .add_systems(Update, event_io.run_if(in_state(AppState::Playing)));
     }
@@ -35,9 +29,11 @@ type NetworkIO = Worker<String, String>;
 fn spawn_network_io_task(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let io = NetworkIO::spawn(thread_pool, |mut client_rx, client_tx| async move {
+        warn!("connecting");
         let ws_io = match WsMeta::connect("ws://71.233.100.144:3030/client", None).await {
             Ok((_, ws_io)) => ws_io,
             Err(_) => {
+                warn!("dropped");
                 return;
             }
         };

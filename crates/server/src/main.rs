@@ -90,7 +90,7 @@ async fn load_puzzle(image_url: &str) -> Result<Puzzle> {
     let bytes = response.await?.bytes().await?;
     let image =
         image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)?.to_rgba8();
-    Ok(Puzzle::new(image, 36, true))
+    Ok(Puzzle::new(image, 1000, true))
 }
 
 async fn ws_handler(
