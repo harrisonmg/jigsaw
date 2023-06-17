@@ -72,12 +72,18 @@ fn load(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn setup(puzzle: Res<Puzzle>, mut projection_query: Query<&mut OrthographicProjection>) {
+fn setup(
+    puzzle: Res<Puzzle>,
+    mut projection_query: Query<&mut OrthographicProjection>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
     let puzzle_size = Vec2::new(puzzle.width() as f32, puzzle.height() as f32);
     let small_side = puzzle_size.min_element();
     let initial_zoom = 3.0 * small_side / Vec2::from(get_viewport_size());
     let mut proj = projection_query.get_single_mut().unwrap();
     proj.scale = initial_zoom.min_element();
+
+    next_state.set(AppState::Playing);
 }
 
 fn center_camera(

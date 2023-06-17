@@ -29,11 +29,9 @@ type NetworkIO = Worker<String, String>;
 fn spawn_network_io_task(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let io = NetworkIO::spawn(thread_pool, |mut client_rx, client_tx| async move {
-        warn!("connecting");
         let ws_io = match WsMeta::connect("ws://71.233.100.144:3030/client", None).await {
             Ok((_, ws_io)) => ws_io,
             Err(_) => {
-                warn!("dropped");
                 return;
             }
         };
@@ -82,13 +80,13 @@ fn load_puzzle(
         Ok(msg) => {
             if let Ok(puzzle) = Puzzle::deserialize(msg.as_str()) {
                 commands.insert_resource(puzzle);
-                next_state.set(AppState::Setup);
+                next_state.set(AppState::Cutting);
+            } else {
             }
         }
         Err(e) => match e {
             TryRecvError::Empty => (),
-            TryRecvError::Disconnected => (), // TODO something here? hard to handle when not even the camera is loaded
-                                              // Maybe the loading screen will help. Could be a good reason to do it in engine.
+            TryRecvError::Disconnected => next_state.set(AppState::ConnectionLost),
         },
     }
 }
@@ -140,7 +138,7 @@ fn event_io(
     // receive events from the server and apply them to the local puzzle instance
     let mut new_events = Vec::new();
     while let Ok(msg) = network_io.output.try_recv() {
-        let event = AnyGameEvent::deserialize(msg.as_str());
+        let event = AnyGameEvent::deserialize(msg.as_str()).unwrap();
         new_events.extend(puzzle.apply_event(event));
     }
 

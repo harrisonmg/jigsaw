@@ -140,18 +140,22 @@ async fn client_handler(
                 };
 
                 if msg.is_text() {
-                    let mut game_event = AnyGameEvent::deserialize(msg.to_str().unwrap());
-                    game_event.add_player_id(client_id);
+                    if let Ok(mut game_event) = AnyGameEvent::deserialize(msg.to_str().unwrap()) {
+                        game_event.add_player_id(client_id);
 
-                    let server_event = ServerGameEvent {
-                        client_id,
-                        game_event,
-                    };
+                        let server_event = ServerGameEvent {
+                            client_id,
+                            game_event,
+                        };
 
-                    if let Err(e) = event_tx.send(server_event) {
-                        error!(
+                        if let Err(e) = event_tx.send(server_event) {
+                            error!(
                             "error sending event to server model in client {client_id} task: {e}"
                         );
+                            break;
+                        }
+                    } else {
+                        error!("malformed message from client {client_id}: {msg:?}");
                         break;
                     }
                 } else {

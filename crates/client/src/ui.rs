@@ -1,6 +1,10 @@
-use std::{iter::Cycle, slice::Iter, time::Duration};
+use std::{
+    iter::{Cycle, Peekable},
+    slice::Iter,
+    time::Duration,
+};
 
-use bevy::{prelude::*, time::common_conditions::on_fixed_timer};
+use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use crate::{
     colors::{DARK, LIGHTER},
@@ -11,16 +15,23 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Loading), load)
+        app.insert_resource(LoadingMessage(String::from("Connecting to server")))
+            .add_systems(OnEnter(AppState::Loading), load)
             .add_systems(
                 Update,
                 loading_animation
-                    .run_if(in_state(AppState::Loading))
-                    .run_if(on_fixed_timer(Duration::from_millis(300))),
+                    .run_if(in_state(AppState::Loading).or_else(in_state(AppState::Cutting)))
+                    .run_if(on_timer(Duration::from_millis(150))),
             )
-            .add_systems(OnExit(AppState::Loading), loading_done)
+            .add_systems(
+                Update,
+                loading_display
+                    .run_if(in_state(AppState::Loading).or_else(in_state(AppState::Cutting))),
+            )
             .add_systems(OnEnter(AppState::Setup), setup)
+            .add_systems(OnEnter(AppState::Playing), loading_done)
             .add_systems(Update, hover_help.run_if(in_state(AppState::Playing)))
+            .add_systems(OnEnter(AppState::ConnectionLost), loading_done)
             .add_systems(OnEnter(AppState::ConnectionLost), connection_lost_message);
     }
 }
@@ -29,27 +40,25 @@ impl Plugin for UiPlugin {
 struct UiFont(Handle<Font>);
 
 #[derive(Component)]
-struct LoadingMessage;
+struct LoadingNode;
 
 #[derive(Component)]
 struct LoadingText;
 
 #[derive(Resource)]
-struct LoadingTextCycle<'a>(Cycle<Iter<'a, &'a str>>);
+struct LoadingTextCycle<'a>(Peekable<Cycle<Iter<'a, &'a str>>>);
+
+#[derive(Resource, Default)]
+pub struct LoadingMessage(pub String);
 
 fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font_handle = asset_server.load("fonts/FiraSans-Bold.ttf");
     commands.insert_resource(UiFont(font_handle.clone()));
 
-    let cycle = [
-        "Loading . . .",
-        "Loading · . .",
-        "Loading . · .",
-        "Loading . . ·",
-        "Loading . . .",
-    ]
-    .iter()
-    .cycle();
+    let cycle = [" . . .", " · . .", " . · .", " . . ·", " . . ."]
+        .iter()
+        .cycle()
+        .peekable();
     commands.insert_resource(LoadingTextCycle(cycle));
 
     commands
@@ -63,7 +72,7 @@ fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         })
-        .insert(LoadingMessage)
+        .insert(LoadingNode)
         .with_children(|parent| {
             parent
                 .spawn(NodeBundle {
@@ -79,7 +88,7 @@ fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .with_children(|parent| {
                     parent
                         .spawn(TextBundle::from_section(
-                            "Loading...",
+                            "",
                             TextStyle {
                                 font: font_handle,
                                 font_size: 25.0,
@@ -91,20 +100,25 @@ fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-fn loading_animation(
-    mut text_query: Query<&mut Text, With<LoadingText>>,
-    mut cycle: ResMut<LoadingTextCycle<'static>>,
-) {
-    let mut text = text_query.get_single_mut().unwrap();
-    text.sections[0].value = (*cycle.0.next().unwrap()).to_string();
+fn loading_animation(mut cycle: ResMut<LoadingTextCycle<'static>>) {
+    let _ = *cycle.0.next().unwrap();
 }
 
-fn loading_done(mut commands: Commands, loading_msg_query: Query<Entity, With<LoadingMessage>>) {
+fn loading_display(
+    mut text_query: Query<&mut Text, With<LoadingText>>,
+    mut cycle: ResMut<LoadingTextCycle<'static>>,
+    loading_msg: Res<LoadingMessage>,
+) {
+    let mut text = text_query.get_single_mut().unwrap();
+    let msg = format!("{}{}", loading_msg.0, *cycle.0.peek().unwrap());
+    text.sections[0].value = msg;
+}
+
+fn loading_done(mut commands: Commands, loading_msg_query: Query<Entity, With<LoadingNode>>) {
     let loading_msg_entity = loading_msg_query.get_single().unwrap();
-    commands
-        .get_entity(loading_msg_entity)
-        .unwrap()
-        .despawn_recursive();
+    if let Some(entity_commands) = commands.get_entity(loading_msg_entity) {
+        entity_commands.despawn_recursive();
+    }
 }
 
 #[derive(Component)]

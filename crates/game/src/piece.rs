@@ -14,10 +14,10 @@ const PIECE_OVERSIZE_DENOM: u32 = 100;
 const SHADOW_STROKE_DENOM: f64 = 15.0;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct PieceIndex(pub u8, pub u8);
+pub struct PieceIndex(pub u32, pub u32);
 
 impl PieceIndex {
-    pub fn neighbors(self, num_cols: u8, num_rows: u8) -> Vec<Self> {
+    pub fn neighbors(self, num_cols: u32, num_rows: u32) -> Vec<Self> {
         [
             self.north_neighbor(),
             self.south_neighbor(num_rows),
@@ -37,7 +37,7 @@ impl PieceIndex {
         None
     }
 
-    pub fn south_neighbor(self, num_rows: u8) -> Option<Self> {
+    pub fn south_neighbor(self, num_rows: u32) -> Option<Self> {
         let PieceIndex(row, col) = self;
         if row < num_rows - 1 {
             return Some(PieceIndex(row + 1, col));
@@ -45,7 +45,7 @@ impl PieceIndex {
         None
     }
 
-    pub fn east_neighbor(self, num_cols: u8) -> Option<Self> {
+    pub fn east_neighbor(self, num_cols: u32) -> Option<Self> {
         let PieceIndex(row, col) = self;
         if col < num_cols - 1 {
             return Some(PieceIndex(row, col + 1));
@@ -92,7 +92,7 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    pub fn new(index: &PieceIndex, num_cols: u8, num_rows: u8) -> Self {
+    pub fn new(index: &PieceIndex, num_cols: u32, num_rows: u32) -> Self {
         use PieceKind::*;
         let PieceIndex(row, col) = *index;
         let even = (row + col) % 2 == 0;
@@ -304,8 +304,8 @@ impl Piece {
         let mut image: image::RgbaImage = puzzle.image().into();
         let mut crop = image::imageops::crop(
             &mut image,
-            col as u32 * piece_width - tab_width * west_tab - w_oversize,
-            row as u32 * piece_height - tab_height * north_tab - n_oversize,
+            col * piece_width - tab_width * west_tab - w_oversize,
+            row * piece_height - tab_height * north_tab - n_oversize,
             sprite_width,
             sprite_height,
         )

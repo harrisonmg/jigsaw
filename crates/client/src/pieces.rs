@@ -9,7 +9,7 @@ use game::{image::Sprite, Piece, PieceIndex, PieceMovedEvent, Puzzle};
 
 use crate::{
     animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
-    states::AppState,
+    states::AppState, ui::LoadingMessage,
 };
 
 pub const MIN_PIECE_HEIGHT: f32 = 500.0;
@@ -19,7 +19,8 @@ pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Setup), piece_setup)
+        app.add_systems(OnEnter(AppState::Cutting), cutting_setup)
+            .add_systems(Update, cut_pieces.run_if(in_state(AppState::Cutting)))
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
             .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
     }
@@ -142,50 +143,67 @@ pub struct HeldPiece {
     pub cursor_offset: Vec2,
 }
 
-fn piece_setup(
+fn cutting_setup(mut commands: Commands) {
+    commands.insert_resource(PieceMap(HashMap::new()));
+    commands.insert_resource(PieceStack(VecDeque::new()));
+}
+
+#[allow(clippy::too_many_arguments)]
+fn cut_pieces(
+    mut current_piece: Local<u32>,
     puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PieceMaterial>>,
+    mut loading_msg: ResMut<LoadingMessage>,
+    mut piece_map: ResMut<PieceMap>,
+    mut piece_stack: ResMut<PieceStack>,
     mut next_state: ResMut<NextState<AppState>>,
     mut commands: Commands,
 ) {
-    let mut piece_map = PieceMap(HashMap::new());
-    let mut piece_stack = PieceStack(VecDeque::new());
+    loading_msg.0 = format!(
+        "Cutting pieces ( {} / {} )",
+        *current_piece + 1,
+        puzzle.piece_count()
+    );
 
-    puzzle.with_pieces(|piece| {
-        let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref());
-        let piece_bundle = PieceBundle::new(
-            piece,
-            piece_sprite,
-            &mut image_assets,
-            &mut meshes,
-            &mut materials,
-        );
-        let piece_entity = commands.spawn(piece_bundle).id();
+    let index = PieceIndex(
+        *current_piece / puzzle.num_cols(),
+        *current_piece % puzzle.num_cols(),
+    );
 
-        let shadow_x_offset =
-            shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
-        let shadow_y_offset =
-            shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
-        let shadow = SpriteBundle {
-            transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
-            texture: image_assets.add(shadow_sprite.image.into()),
-            ..Default::default()
-        };
-        let shadow_entity = commands.spawn(shadow).id();
+    let piece = puzzle.piece(&index).unwrap();
 
-        commands
-            .entity(piece_entity)
-            .push_children(&[shadow_entity]);
+    let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref());
+    let piece_bundle = PieceBundle::new(
+        piece,
+        piece_sprite,
+        &mut image_assets,
+        &mut meshes,
+        &mut materials,
+    );
+    let piece_entity = commands.spawn(piece_bundle).id();
 
-        piece_map.0.insert(piece.index(), piece_entity);
-        piece_stack.0.push_front(piece_entity);
-    });
+    let shadow_x_offset = shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
+    let shadow_y_offset = shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
+    let shadow = SpriteBundle {
+        transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
+        texture: image_assets.add(shadow_sprite.image.into()),
+        ..Default::default()
+    };
+    let shadow_entity = commands.spawn(shadow).id();
 
-    commands.insert_resource(piece_map);
-    commands.insert_resource(piece_stack);
-    next_state.set(AppState::Playing);
+    commands
+        .entity(piece_entity)
+        .push_children(&[shadow_entity]);
+
+    piece_map.0.insert(index, piece_entity);
+    piece_stack.0.push_front(piece_entity);
+
+    *current_piece += 1;
+    if *current_piece >= puzzle.piece_count() {
+        next_state.set(AppState::Setup);
+    }
 }
 
 fn move_piece(

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -18,8 +19,8 @@ pub enum AnyGameEvent {
 }
 
 impl AnyGameEvent {
-    pub fn deserialize(value: &str) -> Self {
-        serde_json::from_str(value).unwrap()
+    pub fn deserialize(value: &str) -> Result<Self> {
+        serde_json::from_str(value).map_err(anyhow::Error::from)
     }
 
     pub fn serialize(&self) -> String {

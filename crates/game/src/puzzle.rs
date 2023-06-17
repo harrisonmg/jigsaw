@@ -27,8 +27,8 @@ struct Group {
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
     image: crate::image::Image,
-    num_cols: u8,
-    num_rows: u8,
+    num_cols: u32,
+    num_rows: u32,
     piece_width: u32,
     piece_height: u32,
 
@@ -53,22 +53,22 @@ impl Debug for Puzzle {
 }
 
 impl Puzzle {
-    pub fn new(mut image: RgbaImage, target_piece_count: u16, randomize_position: bool) -> Self {
+    pub fn new(mut image: RgbaImage, target_piece_count: u32, randomize_position: bool) -> Self {
         // compute puzzle width and height based while trying to make pieces as square as possible
         let image_ratio = f64::from(image.width()) / f64::from(image.height());
         let num_rows = (f64::from(target_piece_count) / image_ratio).sqrt();
         let num_cols = image_ratio * num_rows;
 
-        let num_rows = num_rows.round().max(2.0) as u8;
-        let num_cols = num_cols.round().max(2.0) as u8;
+        let num_rows = num_rows.round().max(2.0) as u32;
+        let num_cols = num_cols.round().max(2.0) as u32;
 
         // make sure piece sizes are even so tabs are centered.
-        let mut piece_width = image.width() / u32::from(num_cols);
+        let mut piece_width = image.width() / num_cols;
         if piece_width % 2 == 1 {
             piece_width -= 1;
         }
 
-        let mut piece_height = image.height() / u32::from(num_rows);
+        let mut piece_height = image.height() / num_rows;
         if piece_height % 2 == 1 {
             piece_height -= 1;
         }
@@ -78,8 +78,8 @@ impl Puzzle {
             &mut image,
             0,
             0,
-            u32::from(num_cols) * piece_width,
-            u32::from(num_rows) * piece_height,
+            num_cols * piece_width,
+            num_rows * piece_height,
         )
         .to_image();
 
@@ -151,11 +151,11 @@ impl Puzzle {
         self.image.clone()
     }
 
-    pub fn num_cols(&self) -> u8 {
+    pub fn num_cols(&self) -> u32 {
         self.num_cols
     }
 
-    pub fn num_rows(&self) -> u8 {
+    pub fn num_rows(&self) -> u32 {
         self.num_rows
     }
 
@@ -203,11 +203,11 @@ impl Puzzle {
     }
 
     pub fn width(&self) -> u32 {
-        u32::from(self.num_cols) * self.piece_width
+        self.num_cols * self.piece_width
     }
 
     pub fn height(&self) -> u32 {
-        u32::from(self.num_rows) * self.piece_height
+        self.num_rows * self.piece_height
     }
 
     pub fn try_move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMovedEvent> {
@@ -353,8 +353,8 @@ impl Puzzle {
         ) {
             let translation = self.piece(index).unwrap().transform.translation;
 
-            let half_width = f32::from(self.num_cols) * self.piece_width as f32 / 2.0;
-            let half_height = f32::from(self.num_rows) * self.piece_height as f32 / 2.0;
+            let half_width = self.num_cols as f32 * self.piece_width as f32 / 2.0;
+            let half_height = self.num_rows as f32 * self.piece_height as f32 / 2.0;
 
             let half_piece_width = self.piece_width as f32 / 2.0;
             let half_piece_height = self.piece_height as f32 / 2.0;
@@ -467,5 +467,9 @@ impl Puzzle {
                 vec![PlayerDisconnected(event)]
             }
         }
+    }
+
+    pub fn piece_count(&self) -> u32 {
+        self.num_rows * self.num_cols
     }
 }
