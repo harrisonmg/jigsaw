@@ -482,4 +482,8 @@ impl Puzzle {
     pub fn piece_count(&self) -> u32 {
         self.num_rows * self.num_cols
     }
+
+    pub fn is_complete(&self) -> bool {
+        self.groups[0].piece_indices.len() as u32 >= self.piece_count()
+    }
 }

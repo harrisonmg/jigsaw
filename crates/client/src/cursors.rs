@@ -30,7 +30,8 @@ impl Plugin for CursorPlugin {
                 Update,
                 player_disconnected.run_if(in_state(AppState::Playing)),
             )
-            .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)));
+            .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)))
+            .add_systems(Update, cursor_party.run_if(in_state(AppState::Playing)));
     }
 }
 
@@ -117,7 +118,7 @@ fn player_cursor_moved(
                 if let Ok(mut transform) = cursor_query.get_mut(*entity) {
                     transform.translation.x = event.cursor.x;
                     transform.translation.y = event.cursor.y;
-                    transform.translation.z = CURSOR_HEIGHT
+                    transform.translation.z = CURSOR_HEIGHT;
                 }
             } else {
                 add_cursor(
@@ -162,5 +163,16 @@ fn mouse_moved(
                 y: world_cursor_pos.0.y,
             },
         });
+    }
+}
+
+fn cursor_party(
+    cursor_query: Query<&Handle<ColorMaterial>, With<CursorComponent>>,
+    mut materials: &mut Assets<ColorMaterial>,
+) {
+    for handle in cursor_query.iter() {
+        if let Some(mut material) = materials.get_mut(handle) {
+            material.color = Color::BLACK;
+        }
     }
 }
