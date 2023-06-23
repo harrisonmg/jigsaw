@@ -484,6 +484,7 @@ impl Puzzle {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.groups[0].piece_indices.len() as u32 >= self.piece_count()
+        let piece = self.piece_map.get(&PieceIndex(0, 0)).unwrap();
+        self.groups[piece.group_index].piece_indices.len() as u32 >= self.piece_count()
     }
 }

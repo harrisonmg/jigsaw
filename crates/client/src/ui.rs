@@ -155,7 +155,7 @@ struct ImageDownloadText;
 const IMAGE_DOWNLOAD_SYMBOL: &str = "↓";
 const IMAGE_DOWNLOAD_TEXT: &str = "Click to download the full puzzle image";
 
-const BUTTON_SIZE: Val = Val::Px(50.0);
+const BUTTON_SIZE: Val = Val::Px(30.0);
 
 fn playing_setup(mut commands: Commands, font: Res<UiFont>) {
     commands

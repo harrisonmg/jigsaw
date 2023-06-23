@@ -17,10 +17,12 @@ log = "0.4.17"
 
 [dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"
+rev = "469a19c"
 features = ["bevy_render", "serialize"]
 default-features = false
 
 [dev-dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"
+rev = "469a19c"
 features = ["bevy_render", "serialize", "dynamic_linking"]
 default-features = false

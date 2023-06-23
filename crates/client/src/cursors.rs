@@ -168,11 +168,19 @@ fn mouse_moved(
 
 fn cursor_party(
     cursor_query: Query<&Handle<ColorMaterial>, With<CursorComponent>>,
-    mut materials: &mut Assets<ColorMaterial>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    time: Res<Time>,
+    puzzle: Res<Puzzle>,
 ) {
+    if !puzzle.is_complete() {
+        return;
+    }
+
+    let hue = time.elapsed_seconds() * 200.0 % 360.0;
+    let new_color = Color::hsl(hue, 0.8, 0.5);
     for handle in cursor_query.iter() {
         if let Some(mut material) = materials.get_mut(handle) {
-            material.color = Color::BLACK;
+            material.color = new_color;
         }
     }
 }

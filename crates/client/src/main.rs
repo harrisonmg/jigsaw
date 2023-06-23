@@ -26,7 +26,7 @@ fn main() {
     #[cfg(debug_assertions)]
     {
         log_plugin.level = bevy::log::Level::DEBUG;
-        log_plugin.filter = "warn,client=debug".into();
+        log_plugin.filter = "warn,client=debug,game=debug".into();
     }
 
     App::new()
