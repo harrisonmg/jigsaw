@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bevy::prelude::Event;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -37,7 +38,7 @@ impl AnyGameEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
 pub struct PieceMovedEvent {
     pub index: PieceIndex,
     pub x: f32,
@@ -60,7 +61,7 @@ impl From<&Piece> for PieceMovedEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
 pub struct PiecePickedUpEvent {
     pub player_id: Option<Uuid>,
     pub index: PieceIndex,
@@ -72,7 +73,7 @@ impl GameEvent for PiecePickedUpEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
 pub struct PiecePutDownEvent {
     pub player_id: Option<Uuid>,
     pub index: PieceIndex,
@@ -84,7 +85,7 @@ impl GameEvent for PiecePutDownEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
 pub struct PieceConnectionEvent {
     pub index: PieceIndex,
 }
@@ -95,7 +96,7 @@ impl GameEvent for PieceConnectionEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
 pub struct PlayerCursorMovedEvent {
     pub player_id: Option<Uuid>,
     pub cursor: Cursor,
@@ -107,7 +108,7 @@ impl GameEvent for PlayerCursorMovedEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
 pub struct PlayerDisconnectedEvent {
     pub player_id: Uuid,
 }

@@ -14,5 +14,5 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
-[patch.crates-io]
-winit = { git = "https://github.com/JAD3N/winit", branch = "fix-web-mouse-events" }
+#[patch.crates-io]
+#winit = { git = "https://github.com/rust-windowing/winit" }

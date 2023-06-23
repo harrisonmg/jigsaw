@@ -9,7 +9,7 @@ use serde_json_any_key::*;
 
 use crate::{AnyGameEvent, Color, Piece, PieceIndex, PieceKind, PieceMovedEvent, Uuid};
 
-pub const CONNECTION_DISTANCE_RATIO: f32 = 0.15;
+pub const CONNECTION_DISTANCE_RATIO: f32 = 0.2;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct Cursor {
@@ -149,6 +149,16 @@ impl Puzzle {
 
     pub fn image(&self) -> crate::image::Image {
         self.image.clone()
+    }
+
+    pub fn image_png(&self) -> Vec<u8> {
+        let image = RgbaImage::from(self.image());
+        let mut buf = vec![];
+        let mut writer = std::io::Cursor::new(&mut buf);
+        image
+            .write_to(&mut writer, image::ImageOutputFormat::Png)
+            .unwrap();
+        buf
     }
 
     pub fn num_cols(&self) -> u32 {

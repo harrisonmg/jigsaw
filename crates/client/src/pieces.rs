@@ -4,12 +4,10 @@ use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
 
-use bevy_tweening::Animator;
 use game::{image::Sprite, Piece, PieceIndex, PieceMovedEvent, Puzzle};
 
 use crate::{
-    animation::new_piece_animator, better_quad::BetterQuad, material::PieceMaterial,
-    states::AppState, ui::LoadingMessage,
+    better_quad::BetterQuad, material::PieceMaterial, states::AppState, ui::LoadingMessage,
 };
 
 pub const MIN_PIECE_HEIGHT: f32 = 500.0;
@@ -19,8 +17,8 @@ pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Cutting), cutting_setup)
-            .add_systems(Update, cut_pieces.run_if(in_state(AppState::Cutting)))
+        app.add_systems(OnEnter(AppState::Setup), cutting_setup)
+            .add_systems(Update, cut_pieces.run_if(in_state(AppState::Setup)))
             .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
             .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
     }
@@ -50,7 +48,6 @@ impl PieceComponent {
 #[derive(Bundle)]
 pub struct PieceBundle {
     piece: PieceComponent,
-    animator: Animator<Transform>,
     mesh_bundle: MaterialMesh2dBundle<PieceMaterial>,
 }
 
@@ -108,7 +105,6 @@ impl PieceBundle {
 
         Self {
             piece: piece_component,
-            animator: new_piece_animator(),
             mesh_bundle,
         }
     }
@@ -202,7 +198,7 @@ fn cut_pieces(
 
     *current_piece += 1;
     if *current_piece >= puzzle.piece_count() {
-        next_state.set(AppState::Setup);
+        next_state.set(AppState::Playing);
     }
 }
 

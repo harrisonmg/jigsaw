@@ -17,6 +17,7 @@ const ZOOM_FACTOR: f32 = 0.003;
 #[derive(Resource, Debug)]
 pub struct WorldCursorPosition(pub Vec2);
 
+#[derive(Event)]
 pub struct WorldCursorMoved(pub Vec2);
 
 pub struct MousePlugin;

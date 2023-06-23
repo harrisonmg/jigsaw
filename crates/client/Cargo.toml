@@ -17,18 +17,21 @@ futures-lite = "1.12.0"
 gloo-events = "0.1.2"
 wasm-bindgen = "0.2.84"
 bevy = { git = "https://github.com/bevyengine/bevy", features = ["serialize"] }
-bevy_tweening = { git = "https://github.com/harrisonmg/bevy_tweening" }
 ws_stream_wasm = "0.7.4"
 futures-util = "0.3.28"
 itertools = "0.10.5"
+gloo-file = "0.2.3"
 
 [dependencies.web-sys]
 version = "0.3.61"
 features = [
+  "CssStyleDeclaration",
   "Document",
   "Element",
+  "HtmlAnchorElement",
   "HtmlCanvasElement",
   "HtmlCollection",
+  "HtmlElement",
   "Window",
 ]
 

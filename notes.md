@@ -1,8 +1,6 @@
 # TODO
 
-- server silent disconnect for some clients
-
-- can see puzzle being cut good, init board and camera first though
+- get that old winit fix back
 
 - large images still sending to remote clients slowly, debug size?
     * could send as og format before converting
@@ -10,8 +8,8 @@
 - something on puzzle completion
     - rainbow cursor?
 
-- download image button
+- togglable sound effects?
 
-- piece count server arg
+# BUGS
 
-- togglable sound effects
+- server silent disconnect for some clients

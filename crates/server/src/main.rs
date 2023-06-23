@@ -32,6 +32,7 @@ struct ServerGameEvent {
 
 #[derive(Parser)]
 struct Args {
+    target_piece_count: u32,
     image_url: String,
 }
 
@@ -42,7 +43,7 @@ async fn main() {
     );
 
     let args = Args::parse();
-    let puzzle = load_puzzle(args.image_url.as_str())
+    let puzzle = load_puzzle(args.image_url.as_str(), args.target_piece_count)
         .await
         .unwrap_or_else(|e| {
             panic!(
@@ -85,12 +86,12 @@ async fn main() {
     join(serve, event_handler).await;
 }
 
-async fn load_puzzle(image_url: &str) -> Result<Puzzle> {
+async fn load_puzzle(image_url: &str, target_piece_count: u32) -> Result<Puzzle> {
     let response = reqwest::get(image_url);
     let bytes = response.await?.bytes().await?;
     let image =
         image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)?.to_rgba8();
-    Ok(Puzzle::new(image, 1000, true))
+    Ok(Puzzle::new(image, target_piece_count, true))
 }
 
 async fn ws_handler(

@@ -9,14 +9,12 @@ use game::{
 
 automod::dir!("src/");
 
-use bevy_tweening::TweeningPlugin;
 use board::BoardPlugin;
 use cursors::CursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
 use material::PieceMaterial;
 use mouse::MousePlugin;
 use network::NetworkPlugin;
-//use loader::LoaderPlugin;
 use pieces::PiecePlugin;
 use states::AppState;
 use ui::UiPlugin;
@@ -32,7 +30,7 @@ fn main() {
     }
 
     App::new()
-        .add_plugins(
+        .add_plugins((
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
@@ -44,17 +42,15 @@ fn main() {
                     ..Default::default()
                 })
                 .set(log_plugin),
-        )
-        .add_plugin(DisableContextMenuPlugin)
-        .add_plugin(MousePlugin)
-        .add_plugin(TweeningPlugin)
-        .add_plugin(Material2dPlugin::<PieceMaterial>::default())
-        .add_plugin(NetworkPlugin)
-        //.add_plugin(LoaderPlugin)
-        .add_plugin(CursorPlugin)
-        .add_plugin(PiecePlugin)
-        .add_plugin(BoardPlugin)
-        .add_plugin(UiPlugin)
+            DisableContextMenuPlugin,
+            MousePlugin,
+            Material2dPlugin::<PieceMaterial>::default(),
+            NetworkPlugin,
+            CursorPlugin,
+            PiecePlugin,
+            BoardPlugin,
+            UiPlugin,
+        ))
         .add_state::<AppState>()
         .add_event::<PieceMovedEvent>()
         .add_event::<PiecePickedUpEvent>()
@@ -72,18 +68,12 @@ fn load(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn setup(
-    puzzle: Res<Puzzle>,
-    mut projection_query: Query<&mut OrthographicProjection>,
-    mut next_state: ResMut<NextState<AppState>>,
-) {
+fn setup(puzzle: Res<Puzzle>, mut projection_query: Query<&mut OrthographicProjection>) {
     let puzzle_size = Vec2::new(puzzle.width() as f32, puzzle.height() as f32);
     let small_side = puzzle_size.min_element();
     let initial_zoom = 3.0 * small_side / Vec2::from(get_viewport_size());
     let mut proj = projection_query.get_single_mut().unwrap();
     proj.scale = initial_zoom.min_element();
-
-    next_state.set(AppState::Playing);
 }
 
 fn center_camera(
