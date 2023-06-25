@@ -2,7 +2,8 @@ use std::fmt::Debug;
 
 use anyhow::Result;
 use bevy::{prelude::Vec3, transform::components::Transform, utils::HashMap};
-use image::RgbaImage;
+use bytes::Bytes;
+use image::{DynamicImage, RgbaImage};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
@@ -26,7 +27,7 @@ struct Group {
 
 #[derive(Serialize, Deserialize, bevy::ecs::system::Resource)]
 pub struct Puzzle {
-    image: crate::image::Image,
+    raw_image: Bytes,
     num_cols: u32,
     num_rows: u32,
     piece_width: u32,
@@ -53,7 +54,13 @@ impl Debug for Puzzle {
 }
 
 impl Puzzle {
-    pub fn new(mut image: RgbaImage, target_piece_count: u32, randomize_position: bool) -> Self {
+    pub fn new(
+        raw_image: Bytes,
+        target_piece_count: u32,
+        randomize_position: bool,
+    ) -> Result<Self> {
+        let image = Self::image_from_bytes(&raw_image)?;
+
         // compute puzzle width and height based while trying to make pieces as square as possible
         let image_ratio = f64::from(image.width()) / f64::from(image.height());
         let num_rows = (f64::from(target_piece_count) / image_ratio).sqrt();
@@ -73,22 +80,12 @@ impl Puzzle {
             piece_height -= 1;
         }
 
-        // crop pixels from right and bottom of image to make size multiple of piece size
-        let image: image::RgbaImage = image::imageops::crop(
-            &mut image,
-            0,
-            0,
-            num_cols * piece_width,
-            num_rows * piece_height,
-        )
-        .to_image();
-
         let piece_map = HashMap::new();
         let held_pieces = HashMap::new();
         let groups = Vec::new();
 
         let mut puzzle = Self {
-            image: crate::image::Image::empty(),
+            raw_image,
             num_cols,
             num_rows,
             piece_width,
@@ -135,8 +132,7 @@ impl Puzzle {
             }
         }
 
-        puzzle.image = image.into();
-        puzzle
+        Ok(puzzle)
     }
 
     pub fn serialize(&self) -> String {
@@ -147,18 +143,29 @@ impl Puzzle {
         serde_json::from_str(value).map_err(anyhow::Error::from)
     }
 
-    pub fn image(&self) -> crate::image::Image {
-        self.image.clone()
+    fn image_from_bytes(bytes: &Bytes) -> Result<DynamicImage> {
+        image::load_from_memory(bytes.as_ref())
+            //.or_else(|_| {
+            //    image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
+            //})
+            .map_err(anyhow::Error::from)
     }
 
-    pub fn image_png(&self) -> Vec<u8> {
-        let image = RgbaImage::from(self.image());
-        let mut buf = vec![];
-        let mut writer = std::io::Cursor::new(&mut buf);
-        image
-            .write_to(&mut writer, image::ImageOutputFormat::Png)
-            .unwrap();
-        buf
+    pub fn rgba_image(&self) -> RgbaImage {
+        // crop pixels from right and bottom of image to make size multiple of piece size
+        let mut image = Self::image_from_bytes(&self.raw_image).unwrap();
+        image::imageops::crop(
+            &mut image,
+            0,
+            0,
+            self.num_cols * self.piece_width,
+            self.num_rows * self.piece_height,
+        )
+        .to_image()
+    }
+
+    pub fn raw_image(&self) -> &Bytes {
+        &self.raw_image
     }
 
     pub fn num_cols(&self) -> u32 {
@@ -484,7 +491,8 @@ impl Puzzle {
     }
 
     pub fn is_complete(&self) -> bool {
-        let piece = self.piece_map.get(&PieceIndex(0, 0)).unwrap();
-        self.groups[piece.group_index].piece_indices.len() as u32 >= self.piece_count()
+        self.groups
+            .iter()
+            .all(|group| group.locked || group.piece_indices.is_empty())
     }
 }

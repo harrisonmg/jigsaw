@@ -89,9 +89,7 @@ async fn main() {
 async fn load_puzzle(image_url: &str, target_piece_count: u32) -> Result<Puzzle> {
     let response = reqwest::get(image_url);
     let bytes = response.await?.bytes().await?;
-    let image =
-        image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)?.to_rgba8();
-    Ok(Puzzle::new(image, target_piece_count, true))
+    Puzzle::new(bytes, target_piece_count, true)
 }
 
 async fn ws_handler(

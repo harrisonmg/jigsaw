@@ -1,7 +1,10 @@
+use std::time::Duration;
+
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     sprite::MaterialMesh2dBundle,
+    time::common_conditions::on_timer,
     utils::HashMap,
 };
 use rand::Rng;
@@ -31,7 +34,14 @@ impl Plugin for CursorPlugin {
                 player_disconnected.run_if(in_state(AppState::Playing)),
             )
             .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, cursor_party.run_if(in_state(AppState::Playing)));
+            .add_systems(Update, cursor_party.run_if(in_state(AppState::Playing)))
+            .insert_resource(PuzzleComplete(false))
+            .add_systems(
+                Update,
+                puzzle_complete_check
+                    .run_if(in_state(AppState::Playing))
+                    .run_if(on_timer(Duration::from_millis(500))),
+            );
     }
 }
 
@@ -166,13 +176,20 @@ fn mouse_moved(
     }
 }
 
+#[derive(Resource)]
+struct PuzzleComplete(pub bool);
+
+fn puzzle_complete_check(puzzle: Res<Puzzle>, mut puzzle_complete: ResMut<PuzzleComplete>) {
+    puzzle_complete.0 = puzzle.is_complete();
+}
+
 fn cursor_party(
     cursor_query: Query<&Handle<ColorMaterial>, With<CursorComponent>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
-    puzzle: Res<Puzzle>,
+    puzzle_complete: Res<PuzzleComplete>,
 ) {
-    if !puzzle.is_complete() {
+    if !puzzle_complete.0 {
         return;
     }
 

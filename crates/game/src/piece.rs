@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use image::Pixel;
+use image::{Pixel, RgbaImage};
 use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
 use usvg::NodeExt;
@@ -263,7 +263,7 @@ impl Piece {
         (tab_width * west_tab, tab_height * north_tab)
     }
 
-    pub fn cut_sprites(&self, puzzle: &Puzzle) -> (Sprite, Sprite) {
+    pub fn cut_sprites(&self, puzzle: &Puzzle, image: &RgbaImage) -> (Sprite, Sprite) {
         let PieceIndex(row, col) = self.index;
         let piece_width = puzzle.piece_width();
         let piece_height = puzzle.piece_height();
@@ -301,7 +301,7 @@ impl Piece {
         let sprite_origin_x: f64 = (piece_width / 2 + west_tab * tab_width + w_oversize).into();
         let sprite_origin_y: f64 = (piece_height / 2 + south_tab * tab_height + s_oversize).into();
 
-        let mut image: image::RgbaImage = puzzle.image().into();
+        let mut image = image.clone();
         let mut crop = image::imageops::crop(
             &mut image,
             col * piece_width - tab_width * west_tab - w_oversize,
@@ -473,7 +473,7 @@ impl Piece {
             origin_y: sprite_origin_y,
         };
 
-        let shadow_stroke_width = f64::from(sprite_width.min(sprite_height)) / SHADOW_STROKE_DENOM;
+        let shadow_stroke_width = piece_width.min(piece_height) / SHADOW_STROKE_DENOM;
 
         let shadow_tree_size = usvg::Size::new(
             f64::from(sprite_width) + shadow_stroke_width,

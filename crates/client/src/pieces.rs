@@ -5,6 +5,7 @@ use bevy::{
 };
 
 use game::{image::Sprite, Piece, PieceIndex, PieceMovedEvent, Puzzle};
+use image::RgbaImage;
 
 use crate::{
     better_quad::BetterQuad, material::PieceMaterial, states::AppState, ui::LoadingMessage,
@@ -146,6 +147,7 @@ fn cutting_setup(mut commands: Commands) {
 
 #[allow(clippy::too_many_arguments)]
 fn cut_pieces(
+    mut image: Local<Option<RgbaImage>>,
     mut current_piece: Local<u32>,
     puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
@@ -163,6 +165,10 @@ fn cut_pieces(
         puzzle.piece_count()
     );
 
+    if image.is_none() {
+        *image = Some(puzzle.rgba_image());
+    }
+
     let index = PieceIndex(
         *current_piece / puzzle.num_cols(),
         *current_piece % puzzle.num_cols(),
@@ -170,7 +176,7 @@ fn cut_pieces(
 
     let piece = puzzle.piece(&index).unwrap();
 
-    let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref());
+    let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref(), image.as_ref().unwrap());
     let piece_bundle = PieceBundle::new(
         piece,
         piece_sprite,

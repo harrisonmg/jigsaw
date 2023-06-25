@@ -289,8 +289,8 @@ fn hover_image_download(
                 if !*clicked {
                     *clicked = true;
 
-                    let bytes = puzzle.image_png();
-                    let blob = Blob::new(bytes.as_slice());
+                    let bytes = puzzle.raw_image();
+                    let blob = Blob::new(bytes.as_ref());
                     let object_url = ObjectUrl::from(blob);
 
                     let window = web_sys::window().unwrap();
