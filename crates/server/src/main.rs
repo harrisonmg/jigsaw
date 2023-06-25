@@ -55,15 +55,21 @@ async fn main() {
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
 
-    // add a client route that gives them a puzzle ref and channel handles
+    // route that serves up the client application
+    // TODO finalize this dir for running on server
+    let http_route = warp::fs::dir("crates/client/dist");
+
+    // client route that gives them a puzzle ref and channel handles
     let puzzle_clone = puzzle.clone();
     let event_output_tx_clone = event_output_tx.clone();
-    let routes = warp::path("client")
+    let client_route = warp::path("client")
         .and(warp::ws())
         .and(warp::any().map(move || puzzle_clone.clone()))
         .and(warp::any().map(move || event_input_tx.clone()))
         .and(warp::any().map(move || event_output_tx_clone.subscribe()))
         .and_then(ws_handler);
+
+    let routes = warp::get().and(http_route).or(client_route);
 
     // serve that shit up
     let serve = warp::serve(routes).run(([0, 0, 0, 0], 3030));
