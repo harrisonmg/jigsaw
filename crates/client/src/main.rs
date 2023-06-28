@@ -21,6 +21,7 @@ use ui::UiPlugin;
 use viewport::get_viewport_size;
 
 fn main() {
+    #[allow(unused_mut)]
     let mut log_plugin = LogPlugin::default();
 
     #[cfg(debug_assertions)]

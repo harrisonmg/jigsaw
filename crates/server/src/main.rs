@@ -56,8 +56,7 @@ async fn main() {
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
 
     // route that serves up the client application
-    // TODO finalize this dir for running on server
-    let http_route = warp::fs::dir("crates/client/dist");
+    let http_route = warp::fs::dir("dist");
 
     // client route that gives them a puzzle ref and channel handles
     let puzzle_clone = puzzle.clone();

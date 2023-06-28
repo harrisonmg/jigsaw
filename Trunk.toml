@@ -1,0 +1,6 @@
+[build]
+target = "crates/client/index.html"
+dist = "./dist"
+
+[serve]
+address = "0.0.0.0"
