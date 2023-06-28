@@ -71,7 +71,7 @@ async fn main() {
     let routes = warp::get().and(http_route).or(client_route);
 
     // serve that shit up
-    let serve = warp::serve(routes).run(([0, 0, 0, 0], 3030));
+    let serve = warp::serve(routes).run(([0, 0, 0, 0], 80));
 
     // apply events to the puzzle and dispatch the generated events to clients
     let event_handler = async move {
