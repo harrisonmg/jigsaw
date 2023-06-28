@@ -1,7 +1,9 @@
 #!/bin/bash
 
-apt update -y
-apt install -y libudev-dev
+set -e
+
+sudo apt update -y
+sudo apt install -y libudev-dev
 
 cargo build --release
 
