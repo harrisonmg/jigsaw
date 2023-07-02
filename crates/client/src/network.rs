@@ -29,13 +29,12 @@ type NetworkIO = Worker<String, String>;
 fn spawn_network_io_task(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let io = NetworkIO::spawn(thread_pool, |mut client_rx, client_tx| async move {
-
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();
         let location = document.location().unwrap();
         let host = location.host().unwrap();
 
-        let ws_address = format!("ws://{host}/client");
+        let ws_address = format!("wss://{host}/client");
 
         let ws_io = match WsMeta::connect(ws_address.as_str(), None).await {
             Ok((_, ws_io)) => ws_io,

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{env, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use clap::Parser;
@@ -71,7 +71,8 @@ async fn main() {
     let routes = warp::get().and(http_route).or(client_route);
 
     // serve that shit up
-    let serve = warp::serve(routes).run(([0, 0, 0, 0], 10000));
+    let port: u16 = env::var("PORT").unwrap().parse().unwrap();
+    let serve = warp::serve(routes).run(([0, 0, 0, 0], port));
 
     // apply events to the puzzle and dispatch the generated events to clients
     let event_handler = async move {
