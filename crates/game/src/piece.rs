@@ -251,10 +251,17 @@ impl Piece {
     }
 
     fn tab_size(piece_width: u32, piece_height: u32) -> (u32, u32) {
-        (
-            (TAB_LENGTH_RATIO * f64::from(piece_width)) as u32,
-            (TAB_LENGTH_RATIO * f64::from(piece_height)) as u32,
-        )
+        let mut tab_width = (TAB_LENGTH_RATIO * f64::from(piece_width)) as u32;
+        if tab_width % 2 == 1 {
+            tab_width += 1;
+        }
+
+        let mut tab_height = (TAB_LENGTH_RATIO * f64::from(piece_height)) as u32;
+        if tab_height % 2 == 1 {
+            tab_height += 1;
+        }
+
+        (tab_width, tab_height)
     }
 
     pub fn sprite_origin(&self, piece_width: u32, piece_height: u32) -> (u32, u32) {
@@ -473,7 +480,10 @@ impl Piece {
             origin_y: sprite_origin_y,
         };
 
-        let shadow_stroke_width = piece_width.min(piece_height) / SHADOW_STROKE_DENOM;
+        let mut shadow_stroke_width = piece_width.min(piece_height) / SHADOW_STROKE_DENOM;
+        if shadow_stroke_width % 2.0 != 0.0 {
+            shadow_stroke_width += 2.0 - shadow_stroke_width % 2.0;
+        }
 
         let shadow_tree_size = usvg::Size::new(
             f64::from(sprite_width) + shadow_stroke_width,

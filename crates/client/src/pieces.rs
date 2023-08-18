@@ -188,6 +188,7 @@ fn cut_pieces(
 
     let shadow_x_offset = shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
     let shadow_y_offset = shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
+
     let shadow = SpriteBundle {
         transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
         texture: image_assets.add(shadow_sprite.image.into()),
