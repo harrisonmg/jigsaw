@@ -1,4 +1,4 @@
 #!/bin/bash
 cd "${0%/*}"
 trunk build
-cargo run --bin server $@
+PORT=8080 cargo run --bin server $@

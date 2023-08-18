@@ -15,3 +15,5 @@ Cargo.lock
 *.pdb
 
 jigsaw.zip
+images.txt
+server

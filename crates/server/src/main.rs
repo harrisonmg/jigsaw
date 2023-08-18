@@ -6,12 +6,13 @@ use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
 use tokio::{
+    select,
     sync::{
         broadcast::{self, Receiver},
         mpsc::{unbounded_channel, UnboundedSender},
         RwLock,
     },
-    time::timeout,
+    time::{sleep, timeout},
 };
 use uuid::Uuid;
 use warp::{
@@ -76,9 +77,13 @@ async fn main() {
     let serve = warp::serve(routes).run(([0, 0, 0, 0], port));
 
     // apply events to the puzzle and dispatch the generated events to clients
+    let puzzle_clone = puzzle.clone();
     let event_handler = async move {
         while let Some(server_event) = event_input_rx.recv().await {
-            let res_events = puzzle.write().await.apply_event(server_event.game_event);
+            let res_events = puzzle_clone
+                .write()
+                .await
+                .apply_event(server_event.game_event);
             for res_event in res_events {
                 event_output_tx
                     .send(ServerGameEvent {
@@ -90,7 +95,19 @@ async fn main() {
         }
     };
 
-    join(serve, event_handler).await;
+    let completion_detector = async move {
+        while !puzzle.read().await.is_complete() {
+            sleep(Duration::from_secs(3)).await;
+        }
+        info!("Puzzle complete! Shutting down server in 10 seconds...");
+        sleep(Duration::from_secs(10)).await;
+    };
+
+    select! {
+        _ = serve => error!("Serve task unexpected returned"),
+        _ = event_handler => error!("Event handler unexpected returned"),
+        _ = completion_detector => (),
+    }
 }
 
 async fn load_puzzle(image_url: &str, target_piece_count: u32) -> Result<Puzzle> {
