@@ -23,6 +23,7 @@ use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
 
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
+const DEFAULT_PORT: u16 = 80;
 
 #[derive(Debug, Clone, Copy)]
 struct ServerGameEvent {
@@ -71,7 +72,7 @@ async fn main() {
     let routes = warp::get().and(http_route).or(client_route);
 
     // serve that shit up
-    let port: u16 = env::var("PORT").unwrap().parse().unwrap();
+    let port = env::var("PORT").map_or(DEFAULT_PORT, |var| var.parse().unwrap());
     let serve = warp::serve(routes).run(([0, 0, 0, 0], port));
 
     // apply events to the puzzle and dispatch the generated events to clients

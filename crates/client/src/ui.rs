@@ -341,7 +341,7 @@ fn connection_lost_message(mut commands: Commands, font: Res<UiFont>) {
                 })
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
-                        "Connection to sever lost. Try refreshing the page.",
+                        "Connection to server lost. Try refreshing the page.",
                         TextStyle {
                             font: font.0.clone(),
                             font_size: 25.0,
