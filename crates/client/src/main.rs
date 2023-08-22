@@ -1,6 +1,8 @@
-use bevy::log::LogPlugin;
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
+use bevy::{log::LogPlugin, time::common_conditions::on_timer};
 
 use game::{
     PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent, PiecePutDownEvent,
@@ -62,6 +64,13 @@ fn main() {
         .add_systems(OnEnter(AppState::Loading), load)
         .add_systems(OnEnter(AppState::Setup), setup)
         .add_systems(Update, center_camera.run_if(in_state(AppState::Playing)))
+        .insert_resource(PuzzleComplete(false))
+        .add_systems(
+            Update,
+            puzzle_complete_check
+                .run_if(in_state(AppState::Playing))
+                .run_if(on_timer(Duration::from_millis(500))),
+        )
         .run();
 }
 
@@ -85,5 +94,19 @@ fn center_camera(
         let mut transform = camera_query.get_single_mut().unwrap();
         transform.translation.x = 0.0;
         transform.translation.y = 0.0;
+    }
+}
+
+#[derive(Resource)]
+pub struct PuzzleComplete(pub bool);
+
+fn puzzle_complete_check(puzzle: Res<Puzzle>, mut puzzle_complete: ResMut<PuzzleComplete>) {
+    if !puzzle_complete.0 {
+        puzzle_complete.0 = puzzle.is_complete();
+    } else {
+        let window = web_sys::window().unwrap();
+        let document = window.document().unwrap();
+        let location = document.location().unwrap();
+        location.reload().unwrap();
     }
 }

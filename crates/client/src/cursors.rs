@@ -1,21 +1,18 @@
-use std::time::Duration;
-
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     sprite::MaterialMesh2dBundle,
-    time::common_conditions::on_timer,
     utils::HashMap,
 };
 use rand::Rng;
 
 use game::{Cursor, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle, Uuid};
 
-use crate::states::AppState;
 use crate::{
     mouse::{WorldCursorMoved, WorldCursorPosition},
     pieces::MAX_PIECE_HEIGHT,
 };
+use crate::{states::AppState, PuzzleComplete};
 
 const CURSOR_SIZE_RATIO: f32 = 0.6;
 const CURSOR_HEIGHT: f32 = MAX_PIECE_HEIGHT + 1.0;
@@ -34,14 +31,7 @@ impl Plugin for CursorPlugin {
                 player_disconnected.run_if(in_state(AppState::Playing)),
             )
             .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, cursor_party.run_if(in_state(AppState::Playing)))
-            .insert_resource(PuzzleComplete(false))
-            .add_systems(
-                Update,
-                puzzle_complete_check
-                    .run_if(in_state(AppState::Playing))
-                    .run_if(on_timer(Duration::from_millis(500))),
-            );
+            .add_systems(Update, cursor_party.run_if(in_state(AppState::Playing)));
     }
 }
 
@@ -174,13 +164,6 @@ fn mouse_moved(
             },
         });
     }
-}
-
-#[derive(Resource)]
-struct PuzzleComplete(pub bool);
-
-fn puzzle_complete_check(puzzle: Res<Puzzle>, mut puzzle_complete: ResMut<PuzzleComplete>) {
-    puzzle_complete.0 = puzzle.is_complete();
 }
 
 fn cursor_party(

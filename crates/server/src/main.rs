@@ -47,12 +47,7 @@ async fn main() {
     let args = Args::parse();
     let puzzle = load_puzzle(args.image_url.as_str(), args.target_piece_count)
         .await
-        .unwrap_or_else(|e| {
-            panic!(
-                "Error loading puzzle\n\nIs \"{}\" the correct image URL?\n\nUnderlying error: {e}",
-                args.image_url
-            )
-        });
+        .unwrap_or_else(|e| panic!("{e}"));
     let puzzle = Arc::new(RwLock::new(puzzle));
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
@@ -104,15 +99,17 @@ async fn main() {
     };
 
     select! {
-        _ = serve => error!("Serve task unexpected returned"),
-        _ = event_handler => error!("Event handler unexpected returned"),
+        _ = serve => panic!("Serve task unexpected returned"),
+        _ = event_handler => panic!("Event handler unexpected returned"),
         _ = completion_detector => (),
     }
 }
 
 async fn load_puzzle(image_url: &str, target_piece_count: u32) -> Result<Puzzle> {
-    let response = reqwest::get(image_url);
-    let bytes = response.await?.bytes().await?;
+    let response = reqwest::get(image_url).await?;
+    //let response = reqwest::get(image_url).await?.error_for_status()?;
+    info!("{response:#?}");
+    let bytes = response.bytes().await?;
     Puzzle::new(bytes, target_piece_count, true)
 }
 
