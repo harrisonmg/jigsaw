@@ -61,8 +61,8 @@ fn main() {
         .add_event::<PieceConnectionEvent>()
         .add_event::<PlayerCursorMovedEvent>()
         .add_event::<PlayerDisconnectedEvent>()
-        .add_systems(OnEnter(AppState::Loading), load)
-        .add_systems(OnEnter(AppState::Setup), setup)
+        .add_systems(Startup, spawn_camera)
+        .add_systems(OnEnter(AppState::Cutting), init_camera)
         .add_systems(Update, center_camera.run_if(in_state(AppState::Playing)))
         .insert_resource(PuzzleComplete(false))
         .add_systems(
@@ -74,16 +74,24 @@ fn main() {
         .run();
 }
 
-fn load(mut commands: Commands) {
+fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn setup(puzzle: Res<Puzzle>, mut projection_query: Query<&mut OrthographicProjection>) {
+fn init_camera(
+    puzzle: Res<Puzzle>,
+    mut projection_query: Query<&mut OrthographicProjection>,
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+) {
     let puzzle_size = Vec2::new(puzzle.width() as f32, puzzle.height() as f32);
     let small_side = puzzle_size.min_element();
     let initial_zoom = 3.0 * small_side / Vec2::from(get_viewport_size());
     let mut proj = projection_query.get_single_mut().unwrap();
     proj.scale = initial_zoom.min_element();
+
+    let mut transform = camera_query.get_single_mut().unwrap();
+    transform.translation.x = 0.0;
+    transform.translation.y = 0.0;
 }
 
 fn center_camera(
@@ -101,12 +109,5 @@ fn center_camera(
 pub struct PuzzleComplete(pub bool);
 
 fn puzzle_complete_check(puzzle: Res<Puzzle>, mut puzzle_complete: ResMut<PuzzleComplete>) {
-    if !puzzle_complete.0 {
-        puzzle_complete.0 = puzzle.is_complete();
-    } else {
-        let window = web_sys::window().unwrap();
-        let document = window.document().unwrap();
-        let location = document.location().unwrap();
-        location.reload().unwrap();
-    }
+    puzzle_complete.0 = puzzle.is_complete();
 }

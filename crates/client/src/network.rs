@@ -18,7 +18,7 @@ pub struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Loading), spawn_network_io_task)
+        app.add_systems(Startup, spawn_network_io_task)
             .add_systems(Update, load_puzzle.run_if(in_state(AppState::Loading)))
             .add_systems(Update, event_io.run_if(in_state(AppState::Playing)));
     }
