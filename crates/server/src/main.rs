@@ -80,12 +80,10 @@ async fn main() {
                 .await
                 .apply_event(server_event.game_event);
             for res_event in res_events {
-                event_output_tx
-                    .send(ServerGameEvent {
-                        client_id: server_event.client_id,
-                        game_event: res_event,
-                    })
-                    .unwrap();
+                let _ = event_output_tx.send(ServerGameEvent {
+                    client_id: server_event.client_id,
+                    game_event: res_event,
+                });
             }
         }
     };
@@ -106,9 +104,7 @@ async fn main() {
 }
 
 async fn load_puzzle(image_url: &str, target_piece_count: u32) -> Result<Puzzle> {
-    let response = reqwest::get(image_url).await?;
-    //let response = reqwest::get(image_url).await?.error_for_status()?;
-    info!("{response:#?}");
+    let response = reqwest::get(image_url).await?.error_for_status()?;
     let bytes = response.bytes().await?;
     Puzzle::new(bytes, target_piece_count, true)
 }
