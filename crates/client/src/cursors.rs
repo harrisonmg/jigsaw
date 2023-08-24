@@ -21,17 +21,17 @@ pub struct CursorPlugin;
 
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Setup), player_cursors_setup)
+        app.add_systems(OnEnter(AppState::Playing), player_cursors_setup)
             .add_systems(
                 Update,
-                player_cursor_moved.run_if(in_state(AppState::Playing)),
-            )
-            .add_systems(
-                Update,
-                player_disconnected.run_if(in_state(AppState::Playing)),
-            )
-            .add_systems(Update, mouse_moved.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, cursor_party.run_if(in_state(AppState::Playing)));
+                (
+                    player_cursor_moved,
+                    player_disconnected,
+                    mouse_moved,
+                    cursor_party,
+                )
+                    .run_if(in_state(AppState::Playing)),
+            );
     }
 }
 
@@ -98,9 +98,19 @@ fn random_color() -> Color {
     Color::hex(format!("{val:06x}")).unwrap()
 }
 
-fn player_cursors_setup(mut commands: Commands) {
+fn player_cursors_setup(
+    mut commands: Commands,
+    cursor_query: Query<Entity, With<CursorComponent>>,
+) {
     commands.insert_resource(CursorMap(HashMap::new()));
     commands.insert_resource(CursorColor(random_color()));
+
+    for cursor_entity in cursor_query.iter() {
+        commands
+            .get_entity(cursor_entity)
+            .unwrap()
+            .despawn_recursive();
+    }
 }
 
 fn player_cursor_moved(

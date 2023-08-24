@@ -29,11 +29,9 @@ impl Plugin for MousePlugin {
             .add_systems(Update, world_cursor.run_if(in_state(AppState::Playing)))
             .add_systems(
                 Update,
-                pan.run_if(in_state(AppState::Playing)).after(world_cursor),
-            )
-            .add_systems(
-                Update,
-                zoom.run_if(in_state(AppState::Playing)).after(world_cursor),
+                (pan, zoom)
+                    .run_if(in_state(AppState::Playing))
+                    .after(world_cursor),
             )
             .add_systems(
                 Update,

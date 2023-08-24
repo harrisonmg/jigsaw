@@ -18,10 +18,12 @@ pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Setup), cutting_setup)
-            .add_systems(Update, cut_pieces.run_if(in_state(AppState::Setup)))
-            .add_systems(Update, move_piece.run_if(in_state(AppState::Playing)))
-            .add_systems(Update, sort_pieces.run_if(in_state(AppState::Playing)));
+        app.add_systems(OnEnter(AppState::Cutting), cutting_setup)
+            .add_systems(Update, cut_pieces.run_if(in_state(AppState::Cutting)))
+            .add_systems(
+                Update,
+                (move_piece, sort_pieces).run_if(in_state(AppState::Playing)),
+            );
     }
 }
 
@@ -117,6 +119,9 @@ pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
 #[derive(Resource)]
 pub struct PieceStack(pub VecDeque<Entity>);
 
+#[derive(Resource)]
+struct CurrentPieceToCut(pub u32);
+
 impl PieceStack {
     fn remove_entity(&mut self, entity: Entity) {
         self.0
@@ -140,15 +145,23 @@ pub struct HeldPiece {
     pub cursor_offset: Vec2,
 }
 
-fn cutting_setup(mut commands: Commands) {
+fn cutting_setup(mut commands: Commands, piece_query: Query<Entity, With<PieceComponent>>) {
     commands.insert_resource(PieceMap(HashMap::new()));
     commands.insert_resource(PieceStack(VecDeque::new()));
+    commands.insert_resource(CurrentPieceToCut(0));
+
+    for piece_entity in piece_query.iter() {
+        commands
+            .get_entity(piece_entity)
+            .unwrap()
+            .despawn_recursive();
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn cut_pieces(
     mut image: Local<Option<RgbaImage>>,
-    mut current_piece: Local<u32>,
+    mut current_piece: ResMut<CurrentPieceToCut>,
     puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -161,7 +174,7 @@ fn cut_pieces(
 ) {
     loading_msg.0 = format!(
         "Cutting pieces ( {} / {} )",
-        *current_piece + 1,
+        current_piece.0 + 1,
         puzzle.piece_count()
     );
 
@@ -170,10 +183,11 @@ fn cut_pieces(
     }
 
     let index = PieceIndex(
-        *current_piece / puzzle.num_cols(),
-        *current_piece % puzzle.num_cols(),
+        current_piece.0 / puzzle.num_cols(),
+        current_piece.0 % puzzle.num_cols(),
     );
 
+    warn!("{puzzle:#?}");
     let piece = puzzle.piece(&index).unwrap();
 
     let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref(), image.as_ref().unwrap());
@@ -203,15 +217,15 @@ fn cut_pieces(
     piece_map.0.insert(index, piece_entity);
     piece_stack.0.push_front(piece_entity);
 
-    *current_piece += 1;
-    if *current_piece >= puzzle.piece_count() {
+    current_piece.0 += 1;
+    if current_piece.0 >= puzzle.piece_count() {
         next_state.set(AppState::Playing);
     }
 }
 
 fn move_piece(
     mut piece_moved_events: EventReader<PieceMovedEvent>,
-    mut piece_query: Query<&mut Transform>,
+    mut piece_query: Query<&mut Transform, With<PieceComponent>>,
     piece_map: Res<PieceMap>,
     puzzle: Res<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,

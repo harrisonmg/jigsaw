@@ -18,14 +18,12 @@ use crate::{
 
 pub struct UiPlugin;
 
-const DEFAULT_LOADING_TEXT: &str = "Connecting to server";
-
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         // setup
-        app.add_systems(Startup, (startup, start_loading))
-            .insert_resource(LoadingMessage(String::from(DEFAULT_LOADING_TEXT)))
-            .add_systems(OnEnter(AppState::Downloading), start_loading);
+        app.insert_resource(LoadingMessage::default())
+            .add_systems(Startup, startup)
+            .add_systems(PostStartup, start_loading);
 
         // loading
         app.add_systems(
@@ -42,10 +40,9 @@ impl Plugin for UiPlugin {
         // playing
         app.add_systems(OnEnter(AppState::Playing), (enter_playing, stop_loading))
             .add_systems(OnExit(AppState::Playing), (exit_playing, start_loading))
-            .add_systems(Update, hover_help.run_if(in_state(AppState::Playing)))
             .add_systems(
                 Update,
-                hover_image_download.run_if(in_state(AppState::Playing)),
+                (hover_help, hover_image_download).run_if(in_state(AppState::Playing)),
             );
     }
 }
@@ -67,7 +64,7 @@ pub struct LoadingMessage(pub String);
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font_handle = asset_server.load("fonts/FiraSans-Bold.ttf");
-    commands.insert_resource(UiFont(font_handle.clone()));
+    commands.insert_resource(UiFont(font_handle));
 
     let cycle = [" . . .", " · . .", " . · .", " . . ·", " . . ."]
         .iter()
@@ -105,7 +102,7 @@ fn start_loading(mut commands: Commands, font: Res<UiFont>) {
                 .with_children(|parent| {
                     parent
                         .spawn(TextBundle::from_section(
-                            DEFAULT_LOADING_TEXT,
+                            "",
                             TextStyle {
                                 font: font.0.clone(),
                                 font_size: 25.0,
@@ -132,7 +129,7 @@ fn loading_display(
 }
 
 fn stop_loading(mut commands: Commands, loading_msg_query: Query<Entity, With<LoadingNode>>) {
-    despawn(loading_msg_query, commands);
+    despawn(loading_msg_query, &mut commands);
 }
 
 #[derive(Component)]
@@ -256,8 +253,8 @@ fn exit_playing(
     help_node_query: Query<Entity, With<HelpNode>>,
     image_download_node_query: Query<Entity, With<ImageDownloadNode>>,
 ) {
-    despawn(help_node_query, commands);
-    despawn(image_download_node_query, commands);
+    despawn(help_node_query, &mut commands);
+    despawn(image_download_node_query, &mut commands);
 }
 
 fn hover_help(

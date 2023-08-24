@@ -12,21 +12,29 @@ use tokio::sync::oneshot;
 use ws_stream_wasm::{WsMessage, WsMeta};
 
 use crate::states::AppState;
+use crate::ui::LoadingMessage;
 use crate::worker::Worker;
 
 pub struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_network_io_task)
-            .add_systems(Update, load_puzzle.run_if(in_state(AppState::Loading)))
+        app.add_systems(OnEnter(AppState::Connecting), spawn_network_io_task)
+            .add_systems(
+                Update,
+                download_puzzle.run_if(in_state(AppState::Downloading)),
+            )
             .add_systems(Update, event_io.run_if(in_state(AppState::Playing)));
     }
 }
 
 type NetworkIO = Worker<String, String>;
 
-fn spawn_network_io_task(mut commands: Commands) {
+fn spawn_network_io_task(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<AppState>>,
+    mut loading_msg: ResMut<LoadingMessage>,
+) {
     let thread_pool = AsyncComputeTaskPool::get();
     let io = NetworkIO::spawn(thread_pool, |mut client_rx, client_tx| async move {
         let window = web_sys::window().unwrap();
@@ -57,7 +65,7 @@ fn spawn_network_io_task(mut commands: Commands) {
                         None => break,
                         Some(msg) => match msg {
                             WsMessage::Text(msg) => client_tx.send(msg).unwrap(),
-                            WsMessage::Binary(msg) => warn!("strange message received from server: {msg:?}"),
+                            WsMessage::Binary(msg) => warn!("Strange message received from server: {msg:#?}"),
                         }
                     },
                 }
@@ -76,9 +84,11 @@ fn spawn_network_io_task(mut commands: Commands) {
         join(net_rx_handler, net_tx_handler).await;
     });
     commands.insert_resource(io);
+    next_state.set(AppState::Downloading);
+    loading_msg.0 = String::from("Connecting to server");
 }
 
-fn load_puzzle(
+fn download_puzzle(
     mut commands: Commands,
     mut network_io: ResMut<NetworkIO>,
     mut next_state: ResMut<NextState<AppState>>,
@@ -87,13 +97,14 @@ fn load_puzzle(
         Ok(msg) => {
             if let Ok(puzzle) = Puzzle::deserialize(msg.as_str()) {
                 commands.insert_resource(puzzle);
-                next_state.set(AppState::Setup);
+                next_state.set(AppState::Cutting);
             } else {
+                warn!("Unexpected message from server while waiting for puzzle: {msg:#?}");
             }
         }
         Err(e) => match e {
             TryRecvError::Empty => (),
-            TryRecvError::Disconnected => next_state.set(AppState::ConnectionLost),
+            TryRecvError::Disconnected => next_state.set(AppState::Connecting),
         },
     }
 }
@@ -128,7 +139,7 @@ fn event_io(
         ($reader: ident, $events: ident) => {
             for event in $reader.iter(&$events) {
                 if network_io.input.send(event.serialize()).is_err() {
-                    next_state.set(AppState::ConnectionLost);
+                    next_state.set(AppState::Connecting);
                     return;
                 }
             }
