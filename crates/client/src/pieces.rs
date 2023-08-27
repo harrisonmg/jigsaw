@@ -120,6 +120,9 @@ pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
 pub struct PieceStack(pub VecDeque<Entity>);
 
 #[derive(Resource)]
+struct CuttingImage(pub RgbaImage);
+
+#[derive(Resource)]
 struct CurrentPieceToCut(pub u32);
 
 impl PieceStack {
@@ -145,9 +148,14 @@ pub struct HeldPiece {
     pub cursor_offset: Vec2,
 }
 
-fn cutting_setup(mut commands: Commands, piece_query: Query<Entity, With<PieceComponent>>) {
+fn cutting_setup(
+    mut commands: Commands,
+    piece_query: Query<Entity, With<PieceComponent>>,
+    puzzle: Res<Puzzle>,
+) {
     commands.insert_resource(PieceMap(HashMap::new()));
     commands.insert_resource(PieceStack(VecDeque::new()));
+    commands.insert_resource(CuttingImage(puzzle.rgba_image()));
     commands.insert_resource(CurrentPieceToCut(0));
 
     for piece_entity in piece_query.iter() {
@@ -160,7 +168,7 @@ fn cutting_setup(mut commands: Commands, piece_query: Query<Entity, With<PieceCo
 
 #[allow(clippy::too_many_arguments)]
 fn cut_pieces(
-    mut image: Local<Option<RgbaImage>>,
+    image: Res<CuttingImage>,
     mut current_piece: ResMut<CurrentPieceToCut>,
     puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
@@ -178,19 +186,14 @@ fn cut_pieces(
         puzzle.piece_count()
     );
 
-    if image.is_none() {
-        *image = Some(puzzle.rgba_image());
-    }
-
     let index = PieceIndex(
         current_piece.0 / puzzle.num_cols(),
         current_piece.0 % puzzle.num_cols(),
     );
 
-    warn!("{puzzle:#?}");
     let piece = puzzle.piece(&index).unwrap();
 
-    let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref(), image.as_ref().unwrap());
+    let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref(), &image.0);
     let piece_bundle = PieceBundle::new(
         piece,
         piece_sprite,

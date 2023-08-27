@@ -145,9 +145,9 @@ impl Puzzle {
 
     fn image_from_bytes(bytes: &Bytes) -> Result<DynamicImage> {
         image::load_from_memory(bytes.as_ref())
-            //.or_else(|_| {
-            //    image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
-            //})
+            .or_else(|_| {
+                image::load_from_memory_with_format(bytes.as_ref(), image::ImageFormat::Jpeg)
+            })
             .map_err(anyhow::Error::from)
     }
 

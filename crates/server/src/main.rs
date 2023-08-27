@@ -1,4 +1,4 @@
-use std::{env, sync::Arc, time::Duration};
+use std::{env, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use clap::Parser;
@@ -22,9 +22,13 @@ use warp::{
 
 use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
 
+mod puzzle_loader;
+use puzzle_loader::PuzzleLoader;
+
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 const DEFAULT_PORT: u16 = 80;
+const COMPLETE_HOLD_TIME: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy)]
 struct ServerGameEvent {
@@ -34,8 +38,7 @@ struct ServerGameEvent {
 
 #[derive(Parser)]
 struct Args {
-    target_piece_count: u32,
-    image_url: String,
+    queue_file: PathBuf,
 }
 
 #[tokio::main]
@@ -45,10 +48,9 @@ async fn main() {
     );
 
     let args = Args::parse();
-    let puzzle = load_puzzle(args.image_url.as_str(), args.target_piece_count)
-        .await
-        .unwrap_or_else(|e| panic!("{e}"));
-    let puzzle = Arc::new(RwLock::new(puzzle));
+    let mut puzzle_loader = PuzzleLoader::new(args.queue_file);
+    let puzzle = Arc::new(RwLock::new(puzzle_loader.next().unwrap()));
+
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
 
@@ -88,25 +90,23 @@ async fn main() {
         }
     };
 
-    let completion_detector = async move {
+    let completion_handler = async move {
         while !puzzle.read().await.is_complete() {
             sleep(Duration::from_secs(3)).await;
         }
-        info!("Puzzle complete! Shutting down server in 10 seconds...");
-        sleep(Duration::from_secs(10)).await;
+
+        info!("Puzzle complete!");
+        puzzle_loader.pop_current();
     };
 
     select! {
         _ = serve => panic!("Serve task unexpected returned"),
         _ = event_handler => panic!("Event handler unexpected returned"),
-        _ = completion_detector => (),
+        _ = completion_handler => (),
     }
-}
 
-async fn load_puzzle(image_url: &str, target_piece_count: u32) -> Result<Puzzle> {
-    let response = reqwest::get(image_url).await?.error_for_status()?;
-    let bytes = response.bytes().await?;
-    Puzzle::new(bytes, target_piece_count, true)
+    info!("Shutting down server in {COMPLETE_HOLD_TIME:?}...");
+    sleep(COMPLETE_HOLD_TIME).await;
 }
 
 async fn ws_handler(
