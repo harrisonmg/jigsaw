@@ -96,7 +96,10 @@ async fn main() {
         }
 
         info!("Puzzle complete!");
+        info!("Shutting down server in {COMPLETE_HOLD_TIME:?}...");
+
         puzzle_loader.pop_current();
+        sleep(COMPLETE_HOLD_TIME).await;
     };
 
     select! {
@@ -104,9 +107,6 @@ async fn main() {
         _ = event_handler => panic!("Event handler unexpected returned"),
         _ = completion_handler => (),
     }
-
-    info!("Shutting down server in {COMPLETE_HOLD_TIME:?}...");
-    sleep(COMPLETE_HOLD_TIME).await;
 }
 
 async fn ws_handler(
