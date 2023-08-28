@@ -1,4 +1,10 @@
-use std::{env, fs::write, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    env,
+    fs::{read_to_string, write},
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::Result;
 use clap::Parser;
@@ -31,7 +37,7 @@ const DEFAULT_PORT: u16 = 80;
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
 const PUZZLE_BACKUP_INTERVAL: Duration = Duration::from_secs(30);
-const PUZZLE_BACKUP_FILE: PathBuf = PathBuf::from("puzzle_backup.json");
+const PUZZLE_BACKUP_FILE: &str = "puzzle_backup.json";
 
 const COMPLETION_CHECK_INTERVAL: Duration = Duration::from_secs(3);
 const COMPLETE_HOLD_TIME: Duration = Duration::from_secs(10);
@@ -45,6 +51,9 @@ struct ServerGameEvent {
 #[derive(Parser)]
 struct Args {
     queue_file: PathBuf,
+
+    #[arg(short, long)]
+    load_backup: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -55,7 +64,13 @@ async fn main() {
 
     let args = Args::parse();
     let mut puzzle_loader = PuzzleLoader::new(args.queue_file);
-    let puzzle = Arc::new(RwLock::new(puzzle_loader.next().unwrap()));
+
+    let puzzle = match args.load_backup {
+        Some(backup) => Puzzle::deserialize(&read_to_string(backup).unwrap()).unwrap(),
+        None => puzzle_loader.next().unwrap(),
+    };
+
+    let puzzle = Arc::new(RwLock::new(puzzle));
 
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(BROADCAST_CHANNEL_SIZE);
@@ -101,7 +116,7 @@ async fn main() {
         loop {
             sleep(PUZZLE_BACKUP_INTERVAL).await;
             let json = puzzle_clone.read().await.serialize();
-            write(PUZZLE_BACKUP_FILE, json);
+            write(PUZZLE_BACKUP_FILE, json).unwrap();
         }
     };
 

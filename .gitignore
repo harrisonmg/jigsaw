@@ -14,8 +14,9 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
+/images/
 /jigsaw.zip
 /images.txt
 /server
 /queue.txt
-/images/
+/puzzle_backup.json
