@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, sync::Arc, time::Duration};
+use std::{env, fs::write, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use clap::Parser;
@@ -26,8 +26,14 @@ mod puzzle_loader;
 use puzzle_loader::PuzzleLoader;
 
 const BROADCAST_CHANNEL_SIZE: usize = 10_000;
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 const DEFAULT_PORT: u16 = 80;
+
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
+
+const PUZZLE_BACKUP_INTERVAL: Duration = Duration::from_secs(30);
+const PUZZLE_BACKUP_FILE: PathBuf = PathBuf::from("puzzle_backup.json");
+
+const COMPLETION_CHECK_INTERVAL: Duration = Duration::from_secs(3);
 const COMPLETE_HOLD_TIME: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy)]
@@ -90,9 +96,18 @@ async fn main() {
         }
     };
 
+    let puzzle_clone = puzzle.clone();
+    let puzzle_backup = async move {
+        loop {
+            sleep(PUZZLE_BACKUP_INTERVAL).await;
+            let json = puzzle_clone.read().await.serialize();
+            write(PUZZLE_BACKUP_FILE, json);
+        }
+    };
+
     let completion_handler = async move {
         while !puzzle.read().await.is_complete() {
-            sleep(Duration::from_secs(3)).await;
+            sleep(COMPLETION_CHECK_INTERVAL).await;
         }
 
         info!("Puzzle complete!");
@@ -103,8 +118,9 @@ async fn main() {
     };
 
     select! {
-        _ = serve => panic!("Serve task unexpected returned"),
-        _ = event_handler => panic!("Event handler unexpected returned"),
+        _ = serve => panic!(),
+        _ = event_handler => panic!(),
+        _ = puzzle_backup => panic!(),
         _ = completion_handler => (),
     }
 }
