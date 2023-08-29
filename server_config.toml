@@ -1,0 +1,14 @@
+port = 8080 # server port
+client_timeout = 600 # seconds before inactive clients are kicked
+broadcast_channel_size = 10_000 # max supported clients
+
+puzzle_backup_interval = 30 # seconds between puzzle state backups
+puzzle_backup_file = "puzzle_backup.json" # filename from which to load and save puzzle state
+
+completion_check_interval = 3 # seconds between puzzle completion checks
+complete_wait_time = 10 # time to wait after a puzzle is complete before shutting down
+
+queue_file = "queue.txt" # image queue file
+
+tls_cert = "example/cert.pem"
+tls_key = "example/key.rsa"

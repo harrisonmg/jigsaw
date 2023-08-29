@@ -42,7 +42,11 @@ fn spawn_network_io_task(
         let location = document.location().unwrap();
         let host = location.host().unwrap();
 
-        let ws_address = format!("ws://{host}/client");
+        let ws_address = if cfg!(debug_assertions) {
+            format!("ws://{host}/client")
+        } else {
+            format!("wss://{host}/client")
+        };
 
         let ws_io = match WsMeta::connect(ws_address.as_str(), None).await {
             Ok((_, ws_io)) => ws_io,
