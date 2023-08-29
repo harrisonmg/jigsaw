@@ -1,10 +1,12 @@
 use std::{
     fs::{read_to_string, write},
     path::PathBuf,
+    pin::Pin,
     sync::Arc,
     time::Duration,
 };
 
+use futures_util::Future;
 use log::info;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
@@ -54,6 +56,7 @@ async fn main() {
     let mut puzzle_loader = PuzzleLoader::new(config.queue_file);
 
     let puzzle = if config.puzzle_backup_file.exists() {
+        info!("loading puzzle from {:?}", config.puzzle_backup_file);
         Puzzle::deserialize(&read_to_string(&config.puzzle_backup_file).unwrap()).unwrap()
     } else {
         puzzle_loader.next().unwrap()
@@ -79,9 +82,20 @@ async fn main() {
         .and_then(ws_handler);
 
     let routes = warp::get().and(http_route).or(client_route);
-
-    // serve that shit up
     let serve = warp::serve(routes);
+
+    // don't use tls if dev
+    let serve: Pin<Box<dyn Future<Output = ()>>> = if cfg!(debug_assertions) {
+        Box::pin(serve.run(([0, 0, 0, 0], config.port)))
+    } else {
+        Box::pin(
+            serve
+                .tls()
+                .cert_path(config.tls_cert)
+                .key_path(config.tls_key)
+                .run(([0, 0, 0, 0], config.port)),
+        )
+    };
 
     // apply events to the puzzle and dispatch the generated events to clients
     let puzzle_clone = puzzle.clone();
@@ -121,28 +135,10 @@ async fn main() {
         sleep(config.complete_wait_time).await;
     };
 
-    // don't use tls if dev
-    if cfg!(debug_assertions) {
-        let serve = serve.run(([0, 0, 0, 0], config.port));
-
-        select! {
-            _ = serve => panic!(),
-            _ = event_handler => panic!(),
-            _ = puzzle_backup => panic!(),
-            _ = completion_handler => (),
-        }
-    } else {
-        let serve = serve
-            .tls()
-            .cert_path(config.tls_cert)
-            .key_path(config.tls_key)
-            .run(([0, 0, 0, 0], config.port));
-
-        select! {
-            _ = serve => panic!(),
-            _ = event_handler => panic!(),
-            _ = puzzle_backup => panic!(),
-            _ = completion_handler => (),
-        }
+    select! {
+        _ = serve => panic!(),
+        _ = event_handler => panic!(),
+        _ = puzzle_backup => panic!(),
+        _ = completion_handler => (),
     };
 }
