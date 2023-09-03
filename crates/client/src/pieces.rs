@@ -218,7 +218,12 @@ fn cut_pieces(
         .push_children(&[shadow_entity]);
 
     piece_map.0.insert(index, piece_entity);
-    piece_stack.0.push_front(piece_entity);
+
+    if puzzle.piece_group_locked(&index) {
+        piece_stack.0.push_back(piece_entity);
+    } else {
+        piece_stack.0.push_front(piece_entity);
+    }
 
     current_piece.0 += 1;
     if current_piece.0 >= puzzle.piece_count() {

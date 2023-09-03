@@ -7,7 +7,7 @@ use std::{
 };
 
 use futures_util::Future;
-use log::info;
+use log::{info, warn};
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use tokio::{
@@ -30,14 +30,19 @@ struct Config {
     #[serde_as(as = "DurationSeconds")]
     client_timeout: Duration,
     broadcast_channel_size: usize,
+
+    backup_puzzle: bool,
     #[serde_as(as = "DurationSeconds")]
     puzzle_backup_interval: Duration,
     puzzle_backup_file: PathBuf,
+
     #[serde_as(as = "DurationSeconds")]
     completion_check_interval: Duration,
     #[serde_as(as = "DurationSeconds")]
     complete_wait_time: Duration,
+
     queue_file: PathBuf,
+
     tls_cert: PathBuf,
     tls_key: PathBuf,
 }
@@ -86,6 +91,7 @@ async fn main() {
 
     // don't use tls if dev
     let serve: Pin<Box<dyn Future<Output = ()>>> = if cfg!(debug_assertions) {
+        warn!("starting server in dev mode without TLS");
         Box::pin(serve.run(([0, 0, 0, 0], config.port)))
     } else {
         Box::pin(
@@ -118,8 +124,11 @@ async fn main() {
     let puzzle_backup = async move {
         loop {
             sleep(config.puzzle_backup_interval).await;
-            let json = puzzle_clone.read().await.serialize();
-            write(&config.puzzle_backup_file, json).unwrap();
+
+            if config.backup_puzzle {
+                let json = puzzle_clone.read().await.serialize();
+                write(&config.puzzle_backup_file, json).unwrap();
+            }
         }
     };
 
