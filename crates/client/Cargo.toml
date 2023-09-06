@@ -20,6 +20,7 @@ ws_stream_wasm = "0.7.4"
 futures-util = "0.3.28"
 itertools = "0.10.5"
 gloo-file = "0.2.3"
+regex = "1.9.5"
 
 [dependencies.web-sys]
 version = "0.3.61"
@@ -32,6 +33,7 @@ features = [
   "HtmlCollection",
   "HtmlElement",
   "Location",
+  "Navigator",
   "Window",
 ]
 
