@@ -70,6 +70,15 @@ pub async fn client_handler(
 
                 if msg.is_text() {
                     if let Ok(mut game_event) = AnyGameEvent::deserialize(msg.to_str().unwrap()) {
+                        match game_event {
+                            AnyGameEvent::PieceConnection(_)
+                            | AnyGameEvent::PlayerDisconnected(_) => {
+                                error!("received event from client {client_id} that only the server should generate: {game_event:#?}");
+                                break;
+                            }
+                            _ => (),
+                        }
+
                         game_event.add_player_id(client_id);
 
                         let server_event = ServerGameEvent {

@@ -276,23 +276,13 @@ impl Puzzle {
 
     pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
         let mut events = Vec::new();
-        let mut past_events_len = 0;
+        let mut piece_indices = Vec::new();
+        let group_index = self.piece(index).unwrap().group_index;
+        self.with_group_mut(group_index, |piece| piece_indices.push(piece.index()));
 
-        loop {
-            let mut piece_indices = Vec::new();
-            let group_index = self.piece(index).unwrap().group_index;
-            self.with_group_mut(group_index, |piece| piece_indices.push(piece.index()));
-
-            for index in &piece_indices {
-                events.extend(self.make_piece_connections(index));
-                events.extend(self.piece_lock_check(index));
-            }
-
-            if events.len() == past_events_len {
-                break;
-            } else {
-                past_events_len = events.len();
-            }
+        for index in &piece_indices {
+            events.extend(self.make_piece_connections(index));
+            events.extend(self.piece_lock_check(index));
         }
 
         events
@@ -494,7 +484,6 @@ impl Puzzle {
                 }
             }
             PieceConnection(event) => {
-                bevy::log::warn!("connection");
                 for movement in &event.piece_movements {
                     self.apply_event(PieceMoved(movement.clone()));
 
