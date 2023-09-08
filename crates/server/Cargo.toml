@@ -22,3 +22,4 @@ automod = "1.0.12"
 toml = "0.7.6"
 serde_with = "3.3.0"
 serde = { version = "1.0", features = ["derive"] }
+clap = { version = "4.4.2", features = ["derive"] }

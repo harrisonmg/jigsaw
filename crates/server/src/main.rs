@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use clap::Parser;
 use futures_util::Future;
 use log::{info, warn};
 use serde::Deserialize;
@@ -22,6 +23,11 @@ use game::Puzzle;
 automod::dir!("src/");
 
 use crate::{clients::ws_handler, puzzle_loader::PuzzleLoader, server_game_event::ServerGameEvent};
+
+#[derive(Parser)]
+struct Args {
+    puzzle_json: Option<PathBuf>,
+}
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
@@ -53,16 +59,17 @@ async fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
+    let args = Args::parse();
+
     let config_string = read_to_string("server_config.toml").unwrap();
     let config: Config = toml::from_str(&config_string).unwrap();
-
     info!("loaded config: {config:#?}");
 
     let mut puzzle_loader = PuzzleLoader::new(config.queue_file);
 
-    let puzzle = if config.puzzle_backup_file.exists() {
-        info!("loading puzzle from {:?}", config.puzzle_backup_file);
-        Puzzle::deserialize(&read_to_string(&config.puzzle_backup_file).unwrap()).unwrap()
+    let puzzle = if let Some(puzzle_json) = args.puzzle_json {
+        info!("loading puzzle from {:?}", puzzle_json);
+        Puzzle::deserialize(&read_to_string(&puzzle_json).unwrap()).unwrap()
     } else {
         puzzle_loader.next().unwrap()
     };

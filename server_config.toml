@@ -2,7 +2,7 @@ port = 8080 # server port
 client_timeout = 600 # seconds before inactive clients are kicked
 broadcast_channel_size = 10_000 # max supported clients
 
-backup_puzzle = false # whether or not to write to the puzzle backup file (will still load it if present)
+backup_puzzle = true # whether or not to write to the puzzle backup file
 puzzle_backup_interval = 30 # seconds between puzzle state backups
 puzzle_backup_file = "puzzle_backup.json" # filename from which to load and save puzzle state
 
