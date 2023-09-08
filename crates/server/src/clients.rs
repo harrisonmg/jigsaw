@@ -122,8 +122,6 @@ pub async fn client_handler(
             }
 
             // don't echo client events unless they're piece connection events
-            // since those are always handled server-side first
-            // to prevent non-deterministic connection logic due to rounding errors
             if event.client_id != client_id
                 || matches!(event.game_event, AnyGameEvent::PieceConnection(_))
             {

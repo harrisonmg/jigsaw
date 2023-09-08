@@ -1,14 +1,20 @@
 use std::fmt::Debug;
 
 use anyhow::Result;
-use bevy::{prelude::Vec3, transform::components::Transform, utils::HashMap};
+use bevy::{
+    prelude::Vec3,
+    transform::components::Transform,
+    utils::{HashMap, HashSet},
+};
 use bytes::Bytes;
 use image::{DynamicImage, RgbaImage};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
 
-use crate::{AnyGameEvent, Color, Piece, PieceIndex, PieceKind, PieceMovedEvent, Uuid};
+use crate::{
+    AnyGameEvent, Color, Piece, PieceConnectionEvent, PieceIndex, PieceKind, PieceMovedEvent, Uuid,
+};
 
 pub const CONNECTION_DISTANCE_RATIO: f32 = 0.2;
 
@@ -21,7 +27,7 @@ pub struct Cursor {
 
 #[derive(Serialize, Deserialize)]
 struct Group {
-    piece_indices: Vec<PieceIndex>,
+    piece_indices: HashSet<PieceIndex>,
     locked: bool,
 }
 
@@ -125,8 +131,12 @@ impl Puzzle {
                 }
 
                 puzzle.piece_map.insert(index, piece);
+
+                let mut piece_indices = HashSet::new();
+                piece_indices.insert(index);
+
                 puzzle.groups.push(Group {
-                    piece_indices: vec![index],
+                    piece_indices,
                     locked: false,
                 });
             }
@@ -328,7 +338,7 @@ impl Puzzle {
             self.with_group_mut(old_group_index, |piece| piece.group_index = new_group_index);
             let recruits = self.groups[old_group_index]
                 .piece_indices
-                .drain(..)
+                .drain()
                 .collect::<Vec<_>>();
             self.groups[new_group_index].piece_indices.extend(recruits);
             self.groups[new_group_index].locked =
@@ -476,16 +486,42 @@ impl Puzzle {
                 }
                 Vec::new()
             }
-            PieceConnection(event) => {
-                let mut new_events: Vec<AnyGameEvent> = self
-                    .make_group_connections(&event.index)
-                    .into_iter()
-                    .map(PieceMoved)
-                    .collect();
-                if !new_events.is_empty() {
-                    new_events.push(PieceConnection(event));
+            PieceConnectionCheck(event) => {
+                let piece_movements = self.make_group_connections(&event.index);
+
+                if piece_movements.len() > 0 {
+                    let group_index = self.piece(&event.index).unwrap().group_index;
+                    let locked = self.groups[group_index].locked;
+                    let event = PieceConnectionEvent {
+                        piece_movements,
+                        group_index,
+                        locked,
+                    };
+                    vec![PieceConnection(event)]
+                } else {
+                    vec![]
                 }
-                new_events
+            }
+            PieceConnection(event) => {
+                bevy::log::warn!("connection");
+                for movement in &event.piece_movements {
+                    self.apply_event(PieceMoved(movement.clone()));
+
+                    let piece_group_index = self.piece(&movement.index).unwrap().group_index;
+
+                    if piece_group_index != event.group_index {
+                        self.groups[piece_group_index]
+                            .piece_indices
+                            .remove(&movement.index);
+                        self.groups[event.group_index]
+                            .piece_indices
+                            .insert(movement.index);
+                        self.piece_mut(&movement.index).unwrap().group_index = event.group_index;
+                    }
+
+                    self.groups[event.group_index].locked = event.locked;
+                }
+                event.piece_movements.into_iter().map(PieceMoved).collect()
             }
             PlayerCursorMoved(event) => {
                 vec![PlayerCursorMoved(event)]

@@ -1,11 +1,12 @@
 use bevy::ecs::event::ManualEventReader;
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use futures_util::future::join;
 use futures_util::{select, FutureExt, SinkExt, StreamExt};
 use game::{
-    AnyGameEvent, GameEvent, PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent,
-    PiecePutDownEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
+    AnyGameEvent, GameEvent, PieceConnectionCheckEvent, PieceConnectionEvent, PieceMovedEvent,
+    PiecePickedUpEvent, PiecePutDownEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
 };
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot;
@@ -113,26 +114,32 @@ fn download_puzzle(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[derive(SystemParam)]
+struct EventIoParams<'w, 's> {
+    piece_moved_events: ResMut<'w, Events<PieceMovedEvent>>,
+    piece_moved_reader: Local<'s, ManualEventReader<PieceMovedEvent>>,
+
+    piece_picked_up_events: ResMut<'w, Events<PiecePickedUpEvent>>,
+    piece_picked_up_reader: Local<'s, ManualEventReader<PiecePickedUpEvent>>,
+
+    piece_put_down_events: ResMut<'w, Events<PiecePutDownEvent>>,
+    piece_put_down_reader: Local<'s, ManualEventReader<PiecePutDownEvent>>,
+
+    piece_connection_check_events: ResMut<'w, Events<PieceConnectionCheckEvent>>,
+    piece_connection_check_reader: Local<'s, ManualEventReader<PieceConnectionCheckEvent>>,
+
+    piece_connection_events: ResMut<'w, Events<PieceConnectionEvent>>,
+    piece_connection_reader: Local<'s, ManualEventReader<PieceConnectionEvent>>,
+
+    player_cursor_moved_events: ResMut<'w, Events<PlayerCursorMovedEvent>>,
+    player_cursor_moved_reader: Local<'s, ManualEventReader<PlayerCursorMovedEvent>>,
+
+    player_disconnected_events: ResMut<'w, Events<PlayerDisconnectedEvent>>,
+    player_disconnected_reader: Local<'s, ManualEventReader<PlayerDisconnectedEvent>>,
+}
+
 fn event_io(
-    mut piece_moved_events: ResMut<Events<PieceMovedEvent>>,
-    mut piece_moved_reader: Local<ManualEventReader<PieceMovedEvent>>,
-
-    mut piece_picked_up_events: ResMut<Events<PiecePickedUpEvent>>,
-    mut piece_picked_up_reader: Local<ManualEventReader<PiecePickedUpEvent>>,
-
-    mut piece_put_down_events: ResMut<Events<PiecePutDownEvent>>,
-    mut piece_put_down_reader: Local<ManualEventReader<PiecePutDownEvent>>,
-
-    mut piece_connection_events: ResMut<Events<PieceConnectionEvent>>,
-    mut piece_connection_reader: Local<ManualEventReader<PieceConnectionEvent>>,
-
-    mut player_cursor_moved_events: ResMut<Events<PlayerCursorMovedEvent>>,
-    mut player_cursor_moved_reader: Local<ManualEventReader<PlayerCursorMovedEvent>>,
-
-    mut player_disconnected_events: ResMut<Events<PlayerDisconnectedEvent>>,
-    mut player_disconnected_reader: Local<ManualEventReader<PlayerDisconnectedEvent>>,
-
+    mut params: EventIoParams,
     mut network_io: ResMut<NetworkIO>,
     mut puzzle: ResMut<Puzzle>,
     mut next_state: ResMut<NextState<AppState>>,
@@ -141,7 +148,7 @@ fn event_io(
 
     macro_rules! forward_events {
         ($reader: ident, $events: ident) => {
-            for event in $reader.iter(&$events) {
+            for event in params.$reader.iter(&params.$events) {
                 if network_io.input.send(event.serialize()).is_err() {
                     next_state.set(AppState::Connecting);
                     return;
@@ -153,6 +160,7 @@ fn event_io(
     forward_events!(piece_moved_reader, piece_moved_events);
     forward_events!(piece_picked_up_reader, piece_picked_up_events);
     forward_events!(piece_put_down_reader, piece_put_down_events);
+    forward_events!(piece_connection_check_reader, piece_connection_check_events);
     forward_events!(piece_connection_reader, piece_connection_events);
     forward_events!(player_cursor_moved_reader, player_cursor_moved_events);
     forward_events!(player_disconnected_reader, player_disconnected_events);
@@ -168,20 +176,34 @@ fn event_io(
     for event in new_events {
         use AnyGameEvent::*;
         match event {
-            PieceMoved(event) => piece_moved_events.send(event),
-            PiecePickedUp(event) => piece_picked_up_events.send(event),
-            PiecePutDown(event) => piece_put_down_events.send(event),
-            PieceConnection(event) => piece_connection_events.send(event),
-            PlayerCursorMoved(event) => player_cursor_moved_events.send(event),
-            PlayerDisconnected(event) => player_disconnected_events.send(event),
+            PieceMoved(event) => params.piece_moved_events.send(event),
+            PiecePickedUp(event) => params.piece_picked_up_events.send(event),
+            PiecePutDown(event) => params.piece_put_down_events.send(event),
+            PieceConnectionCheck(event) => params.piece_connection_check_events.send(event),
+            PieceConnection(event) => params.piece_connection_events.send(event),
+            PlayerCursorMoved(event) => params.player_cursor_moved_events.send(event),
+            PlayerDisconnected(event) => params.player_disconnected_events.send(event),
         }
     }
 
     // consume all the events we just dispatched so we don't forward them back out next frame
-    piece_moved_reader.clear(&piece_moved_events);
-    piece_picked_up_reader.clear(&piece_picked_up_events);
-    piece_put_down_reader.clear(&piece_put_down_events);
-    piece_connection_reader.clear(&piece_connection_events);
-    player_cursor_moved_reader.clear(&player_cursor_moved_events);
-    player_disconnected_reader.clear(&player_disconnected_events);
+    params.piece_moved_reader.clear(&params.piece_moved_events);
+    params
+        .piece_picked_up_reader
+        .clear(&params.piece_picked_up_events);
+    params
+        .piece_put_down_reader
+        .clear(&params.piece_put_down_events);
+    params
+        .piece_connection_check_reader
+        .clear(&params.piece_connection_check_events);
+    params
+        .piece_connection_reader
+        .clear(&params.piece_connection_events);
+    params
+        .player_cursor_moved_reader
+        .clear(&params.player_cursor_moved_events);
+    params
+        .player_disconnected_reader
+        .clear(&params.player_disconnected_events);
 }

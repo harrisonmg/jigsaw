@@ -9,11 +9,12 @@ pub trait GameEvent {
     fn serialize(&self) -> String;
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AnyGameEvent {
     PieceMoved(PieceMovedEvent),
     PiecePickedUp(PiecePickedUpEvent),
     PiecePutDown(PiecePutDownEvent),
+    PieceConnectionCheck(PieceConnectionCheckEvent),
     PieceConnection(PieceConnectionEvent),
     PlayerCursorMoved(PlayerCursorMovedEvent),
     PlayerDisconnected(PlayerDisconnectedEvent),
@@ -86,13 +87,26 @@ impl GameEvent for PiecePutDownEvent {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Event)]
-pub struct PieceConnectionEvent {
+pub struct PieceConnectionCheckEvent {
     pub index: PieceIndex,
+}
+
+impl GameEvent for PieceConnectionCheckEvent {
+    fn serialize(&self) -> String {
+        AnyGameEvent::PieceConnectionCheck(*self).serialize()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Event)]
+pub struct PieceConnectionEvent {
+    pub piece_movements: Vec<PieceMovedEvent>,
+    pub group_index: usize,
+    pub locked: bool,
 }
 
 impl GameEvent for PieceConnectionEvent {
     fn serialize(&self) -> String {
-        AnyGameEvent::PieceConnection(*self).serialize()
+        AnyGameEvent::PieceConnection(self.clone()).serialize()
     }
 }
 

@@ -5,8 +5,8 @@ use bevy::sprite::Material2dPlugin;
 use bevy::{log::LogPlugin, time::common_conditions::on_timer};
 
 use game::{
-    PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent, PiecePutDownEvent,
-    PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
+    PieceConnectionCheckEvent, PieceConnectionEvent, PieceMovedEvent, PiecePickedUpEvent,
+    PiecePutDownEvent, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Puzzle,
 };
 
 automod::dir!("src/");
@@ -58,6 +58,7 @@ fn main() {
         .add_event::<PieceMovedEvent>()
         .add_event::<PiecePickedUpEvent>()
         .add_event::<PiecePutDownEvent>()
+        .add_event::<PieceConnectionCheckEvent>()
         .add_event::<PieceConnectionEvent>()
         .add_event::<PlayerCursorMovedEvent>()
         .add_event::<PlayerDisconnectedEvent>()
