@@ -56,8 +56,8 @@ impl From<&Piece> for PieceMovedEvent {
     fn from(value: &Piece) -> Self {
         Self {
             index: value.index(),
-            x: value.transform.translation.x,
-            y: value.transform.translation.y,
+            x: value.translation.x,
+            y: value.translation.y,
         }
     }
 }

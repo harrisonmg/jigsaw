@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use anyhow::Result;
 use bevy::{
     prelude::Vec3,
-    transform::components::Transform,
     utils::{HashMap, HashSet},
 };
 use bytes::Bytes;
@@ -123,7 +122,7 @@ impl Puzzle {
                             (small_pos.abs() * 2.0 + short_side_len / 2.0 + piece_big_side_len)
                                 * small_pos.signum();
                     }
-                    piece.transform.translation = if puzzle_width >= puzzle_height {
+                    piece.translation = if puzzle_width >= puzzle_height {
                         Vec3::new(big_pos, small_pos, 0.0)
                     } else {
                         Vec3::new(small_pos, big_pos, 0.0)
@@ -246,34 +245,30 @@ impl Puzzle {
     }
 
     fn move_piece(&mut self, index: &PieceIndex, x: f32, y: f32) -> Vec<PieceMovedEvent> {
-        let piece_transform = self.piece(index).unwrap().transform;
-        let inverse_piece_transform =
-            Transform::from_matrix(piece_transform.compute_matrix().inverse());
+        let piece_translation = self.piece(index).unwrap().translation;
 
-        let mut target_transform = Transform::from_xyz(x, y, piece_transform.translation.z);
+        let mut target_translation = Vec3::new(x, y, piece_translation.z);
 
         let clamp_half_size = self.width().min(self.height()) as f32 * 3.0;
-        target_transform.translation = target_transform.translation.clamp(
+        target_translation = target_translation.clamp(
             Vec3::new(-clamp_half_size, -clamp_half_size, f32::NEG_INFINITY),
             Vec3::new(clamp_half_size, clamp_half_size, f32::INFINITY),
         );
 
-        let delta = target_transform.mul_transform(inverse_piece_transform);
-        self.move_piece_rel(index, delta)
+        self.move_piece_rel(index, target_translation - piece_translation)
     }
 
-    fn move_piece_rel(&mut self, index: &PieceIndex, delta: Transform) -> Vec<PieceMovedEvent> {
+    fn move_piece_rel(&mut self, index: &PieceIndex, delta: Vec3) -> Vec<PieceMovedEvent> {
         let mut events = Vec::new();
 
-        if delta == Transform::IDENTITY {
+        if delta == Vec3::ZERO {
             return events;
         }
 
         let group_index = self.piece(index).unwrap().group_index;
 
         self.with_group_mut(group_index, |piece| {
-            piece.transform.translation += delta.translation;
-            piece.transform.rotation *= delta.rotation;
+            piece.translation += delta;
             events.push(PieceMovedEvent::from(&*piece));
         });
         events
@@ -329,8 +324,8 @@ impl Puzzle {
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(closest) = closest {
-            let closest_x = closest.0.translation.x;
-            let closest_y = closest.0.translation.y;
+            let closest_x = closest.0.x;
+            let closest_y = closest.0.y;
             events.extend(self.move_piece(index, closest_x, closest_y));
 
             let new_group_index = self.piece(&closest.2).unwrap().group_index;
@@ -355,22 +350,18 @@ impl Puzzle {
         &mut self,
         index: &PieceIndex,
         other: &PieceIndex,
-    ) -> (Transform, f32, PieceIndex) {
+    ) -> (Vec3, f32, PieceIndex) {
         let piece = self.piece(index).unwrap();
         let other_piece = self.piece(other).unwrap();
 
-        let perfect = Transform::from_xyz(
-            other_piece.transform.translation.x
-                + (index.1 as f32 - other.1 as f32) * self.piece_width as f32,
-            other_piece.transform.translation.y
+        let perfect = Vec3::new(
+            other_piece.translation.x + (index.1 as f32 - other.1 as f32) * self.piece_width as f32,
+            other_piece.translation.y
                 + (other.0 as f32 - index.0 as f32) * self.piece_height as f32,
             0.0,
         );
 
-        let distance = perfect
-            .translation
-            .truncate()
-            .distance(piece.transform.translation.truncate());
+        let distance = perfect.truncate().distance(piece.translation.truncate());
 
         (perfect, distance, *other)
     }
@@ -388,7 +379,7 @@ impl Puzzle {
                 | BottomRightCornerOdd
                 | BottomRightCornerEven
         ) {
-            let translation = self.piece(index).unwrap().transform.translation;
+            let translation = self.piece(index).unwrap().translation;
 
             let half_width = self.num_cols as f32 * self.piece_width as f32 / 2.0;
             let half_height = self.num_rows as f32 * self.piece_height as f32 / 2.0;
@@ -426,7 +417,7 @@ impl Puzzle {
             if square_dist <= connection_dist * connection_dist {
                 let events = self.move_piece_rel(
                     index,
-                    Transform::from_xyz(target_x - translation.x, target_y - translation.y, 0.0),
+                    Vec3::new(target_x - translation.x, target_y - translation.y, 0.0),
                 );
                 self.lock_piece_group(index);
                 return events;

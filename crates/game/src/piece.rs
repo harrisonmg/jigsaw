@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use bevy::prelude::Vec3;
 use image::{Pixel, RgbaImage};
 use resvg::{tiny_skia, usvg};
 use serde::{Deserialize, Serialize};
@@ -228,7 +229,7 @@ impl PieceKind {
 pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
-    pub(crate) transform: bevy::prelude::Transform,
+    pub(crate) translation: Vec3,
     pub(crate) group_index: usize,
 }
 
@@ -245,7 +246,7 @@ impl Piece {
         Piece {
             index,
             kind,
-            transform: bevy::prelude::Transform::from_translation(initial_position),
+            translation: initial_position,
             group_index,
         }
     }
@@ -549,7 +550,7 @@ impl Piece {
         self.kind
     }
 
-    pub fn transform(&self) -> bevy::prelude::Transform {
-        self.transform
+    pub fn translation(&self) -> Vec3 {
+        self.translation
     }
 }

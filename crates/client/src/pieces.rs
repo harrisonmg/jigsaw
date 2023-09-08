@@ -97,12 +97,12 @@ impl PieceBundle {
             texture: image_assets.add(sprite.image.into()),
         });
 
-        let mut transform = piece.transform();
-        transform.translation.z = MIN_PIECE_HEIGHT;
+        let mut translation = piece.translation();
+        translation.z = MIN_PIECE_HEIGHT;
         let mesh_bundle = MaterialMesh2dBundle {
             mesh: mesh_handle.into(),
             material,
-            transform,
+            transform: Transform::from_translation(translation),
             ..Default::default()
         };
 
