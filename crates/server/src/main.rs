@@ -75,6 +75,7 @@ async fn main() {
     };
 
     let puzzle = Arc::new(RwLock::new(puzzle));
+    let need_backup = Arc::new(RwLock::new(true));
 
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(config.broadcast_channel_size);
@@ -112,6 +113,7 @@ async fn main() {
 
     // apply events to the puzzle and dispatch the generated events to clients
     let puzzle_clone = puzzle.clone();
+    let need_backup_clone = need_backup.clone();
     let event_handler = async move {
         while let Some(server_event) = event_input_rx.recv().await {
             let res_events = puzzle_clone
@@ -124,6 +126,7 @@ async fn main() {
                     game_event: res_event,
                 });
             }
+            *need_backup_clone.write().await = true;
         }
     };
 
@@ -132,7 +135,8 @@ async fn main() {
         loop {
             sleep(config.puzzle_backup_interval).await;
 
-            if config.backup_puzzle {
+            if config.backup_puzzle && *need_backup.read().await {
+                *need_backup.write().await = false;
                 let json = puzzle_clone.read().await.serialize();
                 write(&config.puzzle_backup_file, json).unwrap();
             }
