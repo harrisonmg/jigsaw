@@ -274,25 +274,50 @@ impl Puzzle {
         events
     }
 
-    pub fn make_group_connections(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
-        let mut events = Vec::new();
+    pub fn connection_check(&mut self, index: &PieceIndex) -> Option<PieceConnectionEvent> {
+        let mut connection_made = false;
+
+        loop {
+            if self.make_group_connections(index) {
+                connection_made = true;
+            } else {
+                break;
+            }
+        }
+
+        let newly_locked = self.group_lock_check(index);
+
+        if connection_made || newly_locked {
+            let group_index = self.piece(index).unwrap().group_index;
+            let mut piece_movements = Vec::new();
+            let locked = self.groups[group_index].locked;
+
+            self.with_group_mut(group_index, |piece| {
+                piece_movements.push(PieceMovedEvent::from(&*piece))
+            });
+
+            Some(PieceConnectionEvent {
+                group_index,
+                piece_movements,
+                locked,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn make_group_connections(&mut self, index: &PieceIndex) -> bool {
         let mut piece_indices = Vec::new();
         let group_index = self.piece(index).unwrap().group_index;
         self.with_group_mut(group_index, |piece| piece_indices.push(piece.index()));
-
-        for index in &piece_indices {
-            events.extend(self.make_piece_connections(index));
-            events.extend(self.piece_lock_check(index));
-        }
-
-        events
+        piece_indices.iter().fold(false, |acc, index| {
+            self.make_piece_connections(index) || acc
+        })
     }
 
-    fn make_piece_connections(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
-        let mut events = Vec::new();
-
+    fn make_piece_connections(&mut self, index: &PieceIndex) -> bool {
         if self.piece_group_locked(index) {
-            return events;
+            return false;
         }
 
         let neighbors: Vec<_> = index
@@ -316,7 +341,7 @@ impl Puzzle {
         if let Some(closest) = closest {
             let closest_x = closest.0.x;
             let closest_y = closest.0.y;
-            events.extend(self.move_piece(index, closest_x, closest_y));
+            self.move_piece(index, closest_x, closest_y);
 
             let new_group_index = self.piece(&closest.2).unwrap().group_index;
             let old_group_index = self.piece(index).unwrap().group_index;
@@ -330,10 +355,12 @@ impl Puzzle {
                 self.groups[new_group_index].locked || self.groups[old_group_index].locked;
 
             if connection_count > 1 {
-                events.extend(self.make_piece_connections(index));
+                self.make_piece_connections(index);
             }
+            true
+        } else {
+            false
         }
-        events
     }
 
     fn single_connection_check(
@@ -356,7 +383,16 @@ impl Puzzle {
         (perfect, distance, *other)
     }
 
-    fn piece_lock_check(&mut self, index: &PieceIndex) -> Vec<PieceMovedEvent> {
+    fn group_lock_check(&mut self, index: &PieceIndex) -> bool {
+        let mut piece_indices = Vec::new();
+        let group_index = self.piece(index).unwrap().group_index;
+        self.with_group_mut(group_index, |piece| piece_indices.push(piece.index()));
+        piece_indices
+            .iter()
+            .any(|index| self.piece_lock_check(index))
+    }
+
+    fn piece_lock_check(&mut self, index: &PieceIndex) -> bool {
         use PieceKind::*;
         let kind = PieceKind::new(index, self.num_cols, self.num_rows);
         if matches!(
@@ -405,15 +441,15 @@ impl Puzzle {
             let connection_dist =
                 CONNECTION_DISTANCE_RATIO * self.piece_width.min(self.piece_height) as f32;
             if square_dist <= connection_dist * connection_dist {
-                let events = self.move_piece_rel(
+                self.move_piece_rel(
                     index,
                     Vec3::new(target_x - translation.x, target_y - translation.y, 0.0),
                 );
                 self.lock_piece_group(index);
-                return events;
+                return true;
             }
         }
-        Vec::new()
+        false
     }
 
     fn lock_piece_group(&mut self, index: &PieceIndex) {
@@ -467,22 +503,11 @@ impl Puzzle {
                 }
                 Vec::new()
             }
-            PieceConnectionCheck(event) => {
-                let piece_movements = self.make_group_connections(&event.index);
-
-                if !piece_movements.is_empty() {
-                    let group_index = self.piece(&event.index).unwrap().group_index;
-                    let locked = self.groups[group_index].locked;
-                    let event = PieceConnectionEvent {
-                        piece_movements,
-                        group_index,
-                        locked,
-                    };
-                    vec![PieceConnection(event)]
-                } else {
-                    vec![]
-                }
-            }
+            PieceConnectionCheck(event) => self
+                .connection_check(&event.index)
+                .into_iter()
+                .map(PieceConnection)
+                .collect(),
             PieceConnection(event) => {
                 for movement in &event.piece_movements {
                     self.apply_event(PieceMoved(*movement));
