@@ -470,7 +470,7 @@ impl Puzzle {
             PieceConnectionCheck(event) => {
                 let piece_movements = self.make_group_connections(&event.index);
 
-                if piece_movements.len() > 0 {
+                if !piece_movements.is_empty() {
                     let group_index = self.piece(&event.index).unwrap().group_index;
                     let locked = self.groups[group_index].locked;
                     let event = PieceConnectionEvent {
@@ -485,7 +485,7 @@ impl Puzzle {
             }
             PieceConnection(event) => {
                 for movement in &event.piece_movements {
-                    self.apply_event(PieceMoved(movement.clone()));
+                    self.apply_event(PieceMoved(*movement));
 
                     let piece_group_index = self.piece(&movement.index).unwrap().group_index;
 

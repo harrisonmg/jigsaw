@@ -104,7 +104,7 @@ fn click_piece(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut piece_picked_up_events: EventWriter<PiecePickedUpEvent>,
     mut piece_put_down_events: EventWriter<PiecePutDownEvent>,
-    mut piece_connection_events: EventWriter<PieceConnectionCheckEvent>,
+    mut piece_connection_check_events: EventWriter<PieceConnectionCheckEvent>,
     piece_query: Query<(&PieceComponent, &GlobalTransform, Entity)>,
     world_cursor_pos: Res<WorldCursorPosition>,
     held_piece: Option<ResMut<HeldPiece>>,
@@ -162,7 +162,7 @@ fn click_piece(
                             player_id: None,
                             index: held_piece.index,
                         });
-                        piece_connection_events.send(PieceConnectionCheckEvent {
+                        piece_connection_check_events.send(PieceConnectionCheckEvent {
                             index: held_piece.index,
                         });
                         commands.remove_resource::<HeldPiece>();
