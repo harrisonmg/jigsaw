@@ -1,4 +1,6 @@
+domain_name = "friendlyjigsaw.com" # server domain name (used for http -> https redirect)
 port = 8080 # server port
+
 client_timeout = 600 # seconds before inactive clients are kicked
 broadcast_channel_size = 10_000 # max supported clients
 

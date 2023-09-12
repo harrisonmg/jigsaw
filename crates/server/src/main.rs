@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Parser;
-use futures_util::Future;
+use futures_util::{future::join, Future, FutureExt};
 use log::{info, warn};
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
@@ -16,7 +16,7 @@ use tokio::{
     sync::{broadcast, mpsc::unbounded_channel, RwLock},
     time::sleep,
 };
-use warp::Filter;
+use warp::{hyper::Uri, Filter};
 
 use game::Puzzle;
 
@@ -32,7 +32,9 @@ struct Args {
 #[serde_as]
 #[derive(Deserialize, Debug)]
 struct Config {
+    domain_name: String,
     port: u16,
+
     #[serde_as(as = "DurationSeconds")]
     client_timeout: Duration,
     broadcast_channel_size: usize,
@@ -102,13 +104,17 @@ async fn main() {
         warn!("starting server in dev mode without TLS");
         Box::pin(serve.run(([0, 0, 0, 0], config.port)))
     } else {
-        Box::pin(
-            serve
-                .tls()
-                .cert_path(config.tls_cert)
-                .key_path(config.tls_key)
-                .run(([0, 0, 0, 0], config.port)),
-        )
+        let tls = serve
+            .tls()
+            .cert_path(config.tls_cert)
+            .key_path(config.tls_key)
+            .run(([0, 0, 0, 0], config.port));
+
+        let uri = Uri::try_from(&format!("https://{}", config.domain_name)).unwrap();
+        let redirect_route = warp::any().map(move || warp::redirect(uri.clone()));
+        let redirect = warp::serve(redirect_route).run(([0, 0, 0, 0], 80));
+
+        Box::pin(join(tls, redirect).map(|_| ()))
     };
 
     // apply events to the puzzle and dispatch the generated events to clients
