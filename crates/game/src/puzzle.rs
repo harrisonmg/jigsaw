@@ -523,9 +523,8 @@ impl Puzzle {
                             .insert(movement.index);
                         self.piece_mut(&movement.index).unwrap().group_index = event.group_index;
                     }
-
-                    self.groups[event.group_index].locked = event.locked;
                 }
+                self.groups[event.group_index].locked = event.locked;
                 event.piece_movements.into_iter().map(PieceMoved).collect()
             }
             PlayerCursorMoved(event) => {
