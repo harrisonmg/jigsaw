@@ -532,6 +532,7 @@ impl Puzzle {
                 vec![PlayerCursorMoved(event)]
             }
             PlayerDisconnected(event) => {
+                self.held_pieces.remove(&event.player_id);
                 vec![PlayerDisconnected(event)]
             }
         }
