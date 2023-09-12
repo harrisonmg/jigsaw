@@ -24,7 +24,7 @@ pub struct Cursor {
     pub y: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Group {
     piece_indices: HashSet<PieceIndex>,
     locked: bool,
@@ -54,6 +54,9 @@ impl Debug for Puzzle {
             .field("num_rows", &self.num_rows)
             .field("piece_width", &self.piece_width)
             .field("piece_height", &self.piece_height)
+            .field("piece_map", &self.piece_map)
+            .field("held_pieces", &self.held_pieces)
+            .field("groups", &self.groups)
             .finish()
     }
 }
@@ -145,6 +148,10 @@ impl Puzzle {
     }
 
     pub fn serialize(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
+    pub fn serialize_without_image(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 

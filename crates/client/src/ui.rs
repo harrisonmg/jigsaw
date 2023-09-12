@@ -326,8 +326,12 @@ fn exit_playing(
 }
 
 fn hover_help(
-    mut interaction_query: Query<(&Interaction, &mut Style), With<HelpButton>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut Style),
+        (Changed<Interaction>, With<HelpButton>),
+    >,
     mut text_query: Query<&mut Text, With<HelpText>>,
+    puzzle: Res<Puzzle>,
 ) {
     let mut text = text_query.get_single_mut().unwrap();
     for (interaction, mut style) in &mut interaction_query {
@@ -342,14 +346,18 @@ fn hover_help(
                 style.width = Val::Auto;
                 style.height = Val::Auto;
             }
-            _ => (),
+            Interaction::Clicked => {
+                info!("{:#?}", puzzle);
+            }
         }
     }
 }
 
 fn hover_image_download(
-    mut clicked: Local<bool>,
-    mut interaction_query: Query<(&Interaction, &mut Style), With<ImageDownloadButton>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut Style),
+        (Changed<Interaction>, With<ImageDownloadButton>),
+    >,
     mut text_query: Query<&mut Text, With<ImageDownloadText>>,
     puzzle: Res<Puzzle>,
 ) {
@@ -360,39 +368,32 @@ fn hover_image_download(
                 text.sections[0].value = String::from(IMAGE_DOWNLOAD_SYMBOL);
                 style.width = BUTTON_SIZE;
                 style.height = BUTTON_SIZE;
-                *clicked = false;
             }
             Interaction::Hovered => {
                 text.sections[0].value = String::from(IMAGE_DOWNLOAD_TEXT);
                 style.width = Val::Auto;
                 style.height = Val::Auto;
-                *clicked = false;
             }
-
             Interaction::Clicked => {
-                if !*clicked {
-                    *clicked = true;
+                let bytes = puzzle.raw_image();
+                let blob = Blob::new(bytes.as_ref());
+                let object_url = ObjectUrl::from(blob);
 
-                    let bytes = puzzle.raw_image();
-                    let blob = Blob::new(bytes.as_ref());
-                    let object_url = ObjectUrl::from(blob);
+                let window = web_sys::window().unwrap();
+                let document = window.document().unwrap();
 
-                    let window = web_sys::window().unwrap();
-                    let document = window.document().unwrap();
+                let link = document
+                    .create_element("a")
+                    .unwrap()
+                    .dyn_into::<HtmlAnchorElement>()
+                    .unwrap();
+                link.style().set_property("display", "none").unwrap();
+                link.set_href(object_url.as_ref());
+                link.set_download("cheater.png");
 
-                    let link = document
-                        .create_element("a")
-                        .unwrap()
-                        .dyn_into::<HtmlAnchorElement>()
-                        .unwrap();
-                    link.style().set_property("display", "none").unwrap();
-                    link.set_href(object_url.as_ref());
-                    link.set_download("cheater.png");
-
-                    let body = document.body().unwrap();
-                    body.append_child(&link).unwrap();
-                    link.click();
-                }
+                let body = document.body().unwrap();
+                body.append_child(&link).unwrap();
+                link.click();
             }
         }
     }

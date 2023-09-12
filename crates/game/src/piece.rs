@@ -63,7 +63,7 @@ impl PieceIndex {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum PieceKind {
     TopLeftCorner,
 
@@ -225,7 +225,7 @@ impl PieceKind {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Piece {
     index: PieceIndex,
     kind: PieceKind,
