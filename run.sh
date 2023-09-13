@@ -1,5 +1,8 @@
 #!/bin/bash
 cd "${0%/*}"
+
+./server "$@"
+
 while true; do
-  ./server "$@" || sleep 10
+  ./server
 done
