@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use futures::future::join;
@@ -19,27 +19,58 @@ use game::{AnyGameEvent, PlayerDisconnectedEvent, Puzzle};
 use crate::server_game_event::ServerGameEvent;
 
 pub async fn ws_handler(
+    remote: Option<SocketAddr>,
     ws: warp::ws::Ws,
     puzzle: Arc<RwLock<Puzzle>>,
-    client_timeout: Duration,
     event_tx: UnboundedSender<ServerGameEvent>,
     event_rx: Receiver<ServerGameEvent>,
+    client_timeout: Duration,
+    ip_denylist: Vec<String>,
 ) -> Result<impl Reply, Rejection> {
     Ok(ws.on_upgrade(move |warp_ws| {
-        client_handler(warp_ws, puzzle, client_timeout, event_tx, event_rx)
+        client_handler(
+            remote,
+            warp_ws,
+            puzzle,
+            event_tx,
+            event_rx,
+            client_timeout,
+            ip_denylist,
+        )
     }))
 }
 
 pub async fn client_handler(
+    remote: Option<SocketAddr>,
     ws: WebSocket,
     puzzle: Arc<RwLock<Puzzle>>,
-    client_timeout: Duration,
     event_tx: UnboundedSender<ServerGameEvent>,
     mut event_rx: Receiver<ServerGameEvent>,
+    client_timeout: Duration,
+    ip_denylist: Vec<String>,
 ) {
+    if remote.is_none() {
+        return;
+    }
+
+    let client_addr = match remote {
+        None => {
+            error!("unexpected None type SocketAddr from client");
+            return;
+        }
+        Some(addr) => {
+            let addr = addr.ip().to_string();
+            if ip_denylist.contains(&addr) {
+                return;
+            } else {
+                addr
+            }
+        }
+    };
+
     let client_id = Uuid::new_v4();
 
-    info!("client {client_id} connected");
+    info!("client {client_id} connected from: {client_addr}");
 
     let (mut ws_tx, mut ws_rx) = ws.split();
 

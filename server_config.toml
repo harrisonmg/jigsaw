@@ -2,7 +2,11 @@ domain_name = "friendlyjigsaw.com" # server domain name (used for http -> https 
 port = 8080 # server port
 
 client_timeout = 600 # seconds before inactive clients are kicked
-broadcast_channel_size = 10_000 # max supported clients
+broadcast_channel_size = 10_000 # effective max supported clients
+
+ip_denylist = [ # list of IP addresses to block
+  # "8.8.8.8",
+]
 
 backup_puzzle = true # whether or not to backup the puzzle state
 puzzle_backup_interval = 30 # seconds between puzzle state backups

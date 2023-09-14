@@ -39,6 +39,8 @@ struct Config {
     client_timeout: Duration,
     broadcast_channel_size: usize,
 
+    ip_denylist: Vec<String>,
+
     backup_puzzle: bool,
     #[serde_as(as = "DurationSeconds")]
     puzzle_backup_interval: Duration,
@@ -89,11 +91,13 @@ async fn main() {
     let puzzle_clone = puzzle.clone();
     let event_output_tx_clone = event_output_tx.clone();
     let client_route = warp::path("client")
+        .and(warp::filters::addr::remote())
         .and(warp::ws())
         .and(warp::any().map(move || puzzle_clone.clone()))
-        .and(warp::any().map(move || config.client_timeout))
         .and(warp::any().map(move || event_input_tx.clone()))
         .and(warp::any().map(move || event_output_tx_clone.subscribe()))
+        .and(warp::any().map(move || config.client_timeout))
+        .and(warp::any().map(move || config.ip_denylist.clone()))
         .and_then(ws_handler);
 
     let routes = warp::get().and(http_route).or(client_route);
