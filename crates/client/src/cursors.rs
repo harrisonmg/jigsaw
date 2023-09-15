@@ -20,15 +20,19 @@ impl Plugin for CursorPlugin {
             .add_systems(OnEnter(AppState::Playing), player_cursors_setup)
             .add_systems(
                 Update,
-                (
-                    player_cursor_moved,
-                    player_disconnected,
-                    mouse_moved,
-                    cursor_party,
-                )
+                (player_disconnected, mouse_moved, cursor_party)
                     .run_if(in_state(AppState::Playing)),
             )
-            .add_systems(LateUpdate, cursor_resize);
+            .add_systems(
+                PostUpdate,
+                cursor_processing.run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(
+                PostUpdate,
+                player_cursor_moved
+                    .run_if(in_state(AppState::Playing))
+                    .after(cursor_processing),
+            );
     }
 }
 
@@ -45,6 +49,9 @@ pub struct CursorBundle {
 pub struct CursorPrefab(CursorBundle);
 
 fn cursors_setup(asset_server: Res<AssetServer>, mut commands: Commands) {
+    // TODO sprite origin is wrong
+    // TODO resource for both sprites
+    // TODO sprite outline needs to be black
     let sprite_handle = asset_server.load("cursor/cursor.png");
     let bundle = CursorBundle {
         cursor: CursorComponent {},
@@ -56,8 +63,14 @@ fn cursors_setup(asset_server: Res<AssetServer>, mut commands: Commands) {
     commands.insert_resource(CursorPrefab(bundle));
 }
 
+#[derive(PartialEq, Eq, Hash)]
+enum PlayerId {
+    LocalPlayer,
+    RemotePlayer(Uuid),
+}
+
 #[derive(Resource)]
-pub struct CursorMap(HashMap<Uuid, Entity>);
+pub struct CursorMap(HashMap<PlayerId, Entity>);
 
 #[derive(Resource)]
 pub struct CursorColor(Color);
@@ -93,18 +106,21 @@ fn player_cursor_moved(
     for event in cursor_moved_events.iter() {
         let new_translation = Vec3::new(event.cursor.x, event.cursor.y, CURSOR_HEIGHT);
 
-        if let Some(player_id) = event.player_id {
-            if let Some(entity) = cursor_map.0.get(&player_id) {
-                if let Ok(mut transform) = cursor_query.get_mut(*entity) {
-                    transform.translation = new_translation;
-                }
-            } else {
-                let mut bundle = cursor_prefab.0.clone();
-                bundle.sprite_bundle.transform.translation = new_translation;
-                bundle.sprite_bundle.sprite.color = event.cursor.color;
-                let entity = commands.spawn(bundle).id();
-                cursor_map.0.insert(player_id, entity);
+        let player_id = match event.player_id {
+            None => PlayerId::LocalPlayer,
+            Some(uuid) => PlayerId::RemotePlayer(uuid),
+        };
+
+        if let Some(entity) = cursor_map.0.get(&player_id) {
+            if let Ok(mut transform) = cursor_query.get_mut(*entity) {
+                transform.translation = new_translation;
             }
+        } else {
+            let mut bundle = cursor_prefab.0.clone();
+            bundle.sprite_bundle.transform.translation = new_translation;
+            bundle.sprite_bundle.sprite.color = event.cursor.color;
+            let entity = commands.spawn(bundle).id();
+            cursor_map.0.insert(player_id, entity);
         }
     }
 }
@@ -115,9 +131,10 @@ fn player_disconnected(
     mut commands: Commands,
 ) {
     for event in player_disconnected_events.iter() {
-        if let Some(entity) = cursor_map.0.get(&event.player_id) {
+        let player_id = PlayerId::RemotePlayer(event.player_id);
+        if let Some(entity) = cursor_map.0.get(&player_id) {
             commands.get_entity(*entity).unwrap().despawn_recursive();
-            cursor_map.0.remove(&event.player_id);
+            cursor_map.0.remove(&player_id);
         }
     }
 }
@@ -156,4 +173,4 @@ fn cursor_party(
     }
 }
 
-fn cursor_resize() {}
+fn cursor_processing() {}

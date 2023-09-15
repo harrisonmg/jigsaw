@@ -28,9 +28,9 @@ impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<WorldCursorMoved>()
             .insert_resource(WorldCursorPosition(Vec2::ZERO))
-            .add_systems(Update, world_cursor.run_if(in_state(AppState::Playing)))
+            .add_systems(PreUpdate, world_cursor.run_if(in_state(AppState::Playing)))
             .add_systems(
-                Update,
+                PreUpdate,
                 (pan, zoom)
                     .run_if(in_state(AppState::Playing))
                     .after(world_cursor),
