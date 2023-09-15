@@ -2,6 +2,7 @@ body {
     margin: 0px;
     height: 100%;
     overflow: hidden;
+    background-color: rgb(54, 57, 62);
     /*cursor: none;*/
 }
 
