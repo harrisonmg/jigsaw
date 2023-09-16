@@ -9,8 +9,9 @@ use crate::{
 };
 use crate::{states::AppState, PuzzleComplete};
 
-const CURSOR_SCALE_RATIO: f32 = 0.3;
-const CURSOR_HEIGHT: f32 = MAX_PIECE_HEIGHT + 1.0;
+const CURSOR_SCALE_RATIO: f32 = 0.175;
+const REMOTE_CURSOR_HEIGHT: f32 = MAX_PIECE_HEIGHT + 1.0;
+const LOCAL_CURSOR_HEIGHT: f32 = REMOTE_CURSOR_HEIGHT + 1.0;
 
 pub struct CursorPlugin;
 
@@ -33,6 +34,9 @@ impl Plugin for CursorPlugin {
                     .run_if(in_state(AppState::Playing))
                     .after(cursor_processing),
             );
+
+        app.add_systems(OnEnter(AppState::Playing), hide_system_cursor)
+            .add_systems(OnExit(AppState::Playing), show_system_cursor);
     }
 }
 
@@ -122,12 +126,12 @@ fn player_cursor_moved(
     mut commands: Commands,
 ) {
     for event in cursor_moved_events.iter() {
-        let new_translation = Vec3::new(event.cursor.x, event.cursor.y, CURSOR_HEIGHT);
-
-        let player_id = match event.player_id {
-            None => PlayerId::LocalPlayer,
-            Some(uuid) => PlayerId::RemotePlayer(uuid),
+        let (player_id, cursor_height) = match event.player_id {
+            None => (PlayerId::LocalPlayer, LOCAL_CURSOR_HEIGHT),
+            Some(uuid) => (PlayerId::RemotePlayer(uuid), REMOTE_CURSOR_HEIGHT),
         };
+
+        let new_translation = Vec3::new(event.cursor.x, event.cursor.y, cursor_height);
 
         if let Some(entity) = cursor_map.0.get(&player_id) {
             if let Ok((mut transform, mut texture)) = cursor_query.get_mut(*entity) {
@@ -216,4 +220,18 @@ fn cursor_processing(
     for mut transform in cursor_query.iter_mut() {
         transform.scale = cursor_scale;
     }
+}
+
+fn hide_system_cursor() {
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let body = document.body().unwrap();
+    body.style().set_property("cursor", "none").unwrap();
+}
+
+fn show_system_cursor() {
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let body = document.body().unwrap();
+    body.style().set_property("cursor", "auto").unwrap();
 }
