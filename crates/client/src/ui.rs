@@ -325,6 +325,7 @@ fn exit_playing(
     despawn(image_download_node_query, &mut commands);
 }
 
+#[allow(clippy::type_complexity)]
 fn hover_help(
     mut interaction_query: Query<
         (&Interaction, &mut Style),
@@ -353,6 +354,7 @@ fn hover_help(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn hover_image_download(
     mut interaction_query: Query<
         (&Interaction, &mut Style),

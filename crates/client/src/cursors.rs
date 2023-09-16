@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, sprite::Anchor, utils::HashMap};
 use rand::Rng;
 
 use game::{Cursor, PlayerCursorMovedEvent, PlayerDisconnectedEvent, Uuid};
@@ -9,7 +9,7 @@ use crate::{
 };
 use crate::{states::AppState, PuzzleComplete};
 
-const CURSOR_SIZE: f32 = 0.6;
+const CURSOR_SCALE_RATIO: f32 = 0.3;
 const CURSOR_HEIGHT: f32 = MAX_PIECE_HEIGHT + 1.0;
 
 pub struct CursorPlugin;
@@ -48,16 +48,32 @@ pub struct CursorBundle {
 #[derive(Resource)]
 pub struct CursorPrefab(CursorBundle);
 
+#[derive(Resource)]
+pub struct CursorTexture(Handle<Image>);
+
+#[derive(Resource)]
+pub struct CursorClickedTexture(Handle<Image>);
+
+#[derive(Resource)]
+pub struct CursorClickedAnchor(Handle<Image>);
+
 fn cursors_setup(asset_server: Res<AssetServer>, mut commands: Commands) {
-    // TODO sprite origin is wrong
-    // TODO resource for both sprites
     // TODO sprite outline needs to be black
-    let sprite_handle = asset_server.load("cursor/cursor.png");
+    let cursor_handle = asset_server.load("cursor/cursor.png");
+    let cursor_clicked_handle = asset_server.load("cursor/cursor_clicked.png");
+
+    commands.insert_resource(CursorTexture(cursor_handle.clone()));
+    commands.insert_resource(CursorClickedTexture(cursor_clicked_handle));
+
     let bundle = CursorBundle {
         cursor: CursorComponent {},
         sprite_bundle: SpriteBundle {
-            texture: sprite_handle,
-            ..Default::default()
+            texture: cursor_handle,
+            sprite: Sprite {
+                anchor: Anchor::TopLeft,
+                ..default()
+            },
+            ..default()
         },
     };
     commands.insert_resource(CursorPrefab(bundle));
@@ -99,8 +115,10 @@ fn player_cursors_setup(
 fn player_cursor_moved(
     mut cursor_moved_events: EventReader<PlayerCursorMovedEvent>,
     mut cursor_map: ResMut<CursorMap>,
-    mut cursor_query: Query<&mut Transform, With<CursorComponent>>,
+    mut cursor_query: Query<(&mut Transform, &mut Handle<Image>), With<CursorComponent>>,
     cursor_prefab: Res<CursorPrefab>,
+    cursor_texture: Res<CursorTexture>,
+    cursor_clicked_texture: Res<CursorClickedTexture>,
     mut commands: Commands,
 ) {
     for event in cursor_moved_events.iter() {
@@ -112,13 +130,22 @@ fn player_cursor_moved(
         };
 
         if let Some(entity) = cursor_map.0.get(&player_id) {
-            if let Ok(mut transform) = cursor_query.get_mut(*entity) {
+            if let Ok((mut transform, mut texture)) = cursor_query.get_mut(*entity) {
                 transform.translation = new_translation;
+                *texture = match event.cursor.clicked {
+                    true => cursor_clicked_texture.0.clone(),
+                    false => cursor_texture.0.clone(),
+                };
             }
         } else {
             let mut bundle = cursor_prefab.0.clone();
             bundle.sprite_bundle.transform.translation = new_translation;
             bundle.sprite_bundle.sprite.color = event.cursor.color;
+
+            if event.cursor.clicked {
+                bundle.sprite_bundle.texture = cursor_clicked_texture.0.clone();
+            }
+
             let entity = commands.spawn(bundle).id();
             cursor_map.0.insert(player_id, entity);
         }
@@ -144,14 +171,19 @@ fn mouse_moved(
     mut cursor_moved_events: EventWriter<PlayerCursorMovedEvent>,
     world_cursor_pos: Res<WorldCursorPosition>,
     cursor_color: Res<CursorColor>,
+    buttons: Res<Input<MouseButton>>,
 ) {
-    if !world_cursor_moved_events.is_empty() {
+    if !world_cursor_moved_events.is_empty()
+        || buttons.just_pressed(MouseButton::Left)
+        || buttons.just_released(MouseButton::Left)
+    {
         cursor_moved_events.send(PlayerCursorMovedEvent {
             player_id: None,
             cursor: Cursor {
                 color: cursor_color.0,
                 x: world_cursor_pos.0.x,
                 y: world_cursor_pos.0.y,
+                clicked: buttons.pressed(MouseButton::Left),
             },
         });
     }
@@ -173,4 +205,15 @@ fn cursor_party(
     }
 }
 
-fn cursor_processing() {}
+fn cursor_processing(
+    mut cursor_query: Query<&mut Transform, With<CursorComponent>>,
+    projection_query: Query<&OrthographicProjection>,
+) {
+    let proj = projection_query.get_single().unwrap();
+    let cursor_scale = proj.scale * CURSOR_SCALE_RATIO;
+    let cursor_scale = Vec3::new(cursor_scale, cursor_scale, 1.0);
+
+    for mut transform in cursor_query.iter_mut() {
+        transform.scale = cursor_scale;
+    }
+}

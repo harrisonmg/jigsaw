@@ -22,6 +22,7 @@ pub struct Cursor {
     pub color: Color,
     pub x: f32,
     pub y: f32,
+    pub clicked: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
