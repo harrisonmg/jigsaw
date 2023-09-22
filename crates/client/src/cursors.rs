@@ -26,13 +26,13 @@ impl Plugin for CursorPlugin {
             )
             .add_systems(
                 PostUpdate,
-                cursor_processing.run_if(in_state(AppState::Playing)),
+                player_cursor_moved.run_if(in_state(AppState::Playing)),
             )
             .add_systems(
                 PostUpdate,
-                player_cursor_moved
+                cursor_processing
                     .run_if(in_state(AppState::Playing))
-                    .after(cursor_processing),
+                    .after(player_cursor_moved),
             );
 
         app.add_systems(OnEnter(AppState::Playing), hide_system_cursor)
