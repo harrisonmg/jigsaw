@@ -518,7 +518,7 @@ impl Puzzle {
                 .collect(),
             PieceConnection(event) => {
                 for movement in &event.piece_movements {
-                    self.apply_event(PieceMoved(*movement));
+                    self.move_piece(&movement.index, movement.x, movement.y);
 
                     let piece_group_index = self.piece(&movement.index).unwrap().group_index;
 
