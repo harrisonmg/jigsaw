@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{
     input::{
         mouse::{MouseButtonInput, MouseWheel},
@@ -15,6 +17,7 @@ use crate::{
 };
 
 const ZOOM_FACTOR: f32 = 0.003;
+const CLICK_TIME: Duration = Duration::from_millis(200);
 
 #[derive(Resource, Debug)]
 pub struct WorldCursorPosition(pub Vec2);
@@ -27,11 +30,15 @@ pub struct MousePlugin;
 #[derive(Resource)]
 pub struct MouseDown(pub bool);
 
+#[derive(Resource)]
+pub struct ClickTimer(pub Timer);
+
 impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<WorldCursorMoved>()
             .insert_resource(WorldCursorPosition(Vec2::ZERO))
             .insert_resource(MouseDown(false))
+            .insert_resource(ClickTimer(Timer::new(CLICK_TIME, TimerMode::Once)))
             .add_systems(PreUpdate, world_cursor.run_if(in_state(AppState::Playing)))
             .add_systems(
                 PreUpdate,
@@ -77,12 +84,11 @@ fn world_cursor(
 fn left_click(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     time: Res<Time>,
+    held_piece: Option<Res<HeldPiece>>,
     mut mouse_down: ResMut<MouseDown>,
-    mut click_timer: Local<Option<Timer>>,
+    mut click_timer: ResMut<ClickTimer>,
 ) {
-    if let Some(timer) = click_timer.as_mut() {
-        timer.tick(time.delta());
-    }
+    click_timer.0.tick(time.delta());
 
     for event in mouse_button_events.iter() {
         if event.button != MouseButton::Left {
@@ -90,10 +96,17 @@ fn left_click(
         }
 
         match event.state {
-            ButtonState::Released => match click_timer.as_mut() {
-                Some(timer) => if timer.finished() {},
-            },
-            ButtonState::Pressed => {}
+            ButtonState::Pressed => {
+                if click_timer.0.finished() && held_piece.is_none() {
+                    mouse_down.0 = true;
+                    click_timer.0.reset();
+                }
+            }
+            ButtonState::Released => {
+                if click_timer.0.finished() {
+                    mouse_down.0 = false;
+                }
+            }
         }
     }
 }

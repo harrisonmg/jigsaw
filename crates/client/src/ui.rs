@@ -206,7 +206,7 @@ struct HelpButton;
 struct HelpText;
 
 const HELP_SYMBOL: &str = "?";
-const HELP_TEXT: &str = "• Left click and drag to move a piece\n\
+const HELP_TEXT: &str = "• Left click to grab and place pieces, or click and drag to move them\n\
                         • Right or middle click and drag to pan\n\
                         • Scroll to zoom\n\
                         • Press space to center the camera\n\n\
