@@ -17,7 +17,7 @@ use crate::{
 };
 
 const ZOOM_FACTOR: f32 = 0.003;
-const CLICK_TIME: Duration = Duration::from_millis(200);
+const CLICK_TIME: Duration = Duration::from_millis(150);
 
 #[derive(Resource, Debug)]
 pub struct WorldCursorPosition(pub Vec2);
