@@ -31,14 +31,20 @@ pub struct MousePlugin;
 pub struct MouseDown(pub bool);
 
 #[derive(Resource)]
-pub struct ClickTimer(pub Timer);
+pub struct ClickState {
+    pub timer: Timer,
+    pub click_pos: Option<Vec2>,
+}
 
 impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<WorldCursorMoved>()
             .insert_resource(WorldCursorPosition(Vec2::ZERO))
             .insert_resource(MouseDown(false))
-            .insert_resource(ClickTimer(Timer::new(CLICK_TIME, TimerMode::Once)))
+            .insert_resource(ClickState {
+                timer: Timer::new(CLICK_TIME, TimerMode::Once),
+                click_pos: None,
+            })
             .add_systems(PreUpdate, world_cursor.run_if(in_state(AppState::Playing)))
             .add_systems(
                 PreUpdate,
@@ -85,10 +91,12 @@ fn left_click(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     time: Res<Time>,
     held_piece: Option<Res<HeldPiece>>,
+    world_cursor_pos: Res<WorldCursorPosition>,
+    puzzle: Res<Puzzle>,
     mut mouse_down: ResMut<MouseDown>,
-    mut click_timer: ResMut<ClickTimer>,
+    mut click_state: ResMut<ClickState>,
 ) {
-    click_timer.0.tick(time.delta());
+    click_state.timer.tick(time.delta());
 
     for event in mouse_button_events.iter() {
         if event.button != MouseButton::Left {
@@ -97,13 +105,21 @@ fn left_click(
 
         match event.state {
             ButtonState::Pressed => {
-                if click_timer.0.finished() && held_piece.is_none() {
+                if click_state.timer.finished() && held_piece.is_none() {
                     mouse_down.0 = true;
-                    click_timer.0.reset();
+                    click_state.timer.reset();
+                    click_state.click_pos = Some(world_cursor_pos.0);
                 }
             }
             ButtonState::Released => {
-                if click_timer.0.finished() {
+                let mouse_moved_enough = if let Some(click_pos) = click_state.click_pos {
+                    click_pos.distance(world_cursor_pos.0)
+                        > puzzle.piece_width().min(puzzle.piece_height()) as f32
+                } else {
+                    false
+                };
+
+                if click_state.timer.finished() || mouse_moved_enough {
                     mouse_down.0 = false;
                 }
             }
