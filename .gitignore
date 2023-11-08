@@ -1,6 +1,5 @@
 target/
 dist/
-Cargo.lock
 images/
 jigsaw.zip
 images.txt
