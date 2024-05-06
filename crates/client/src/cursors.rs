@@ -58,9 +58,6 @@ pub struct CursorTexture(Handle<Image>);
 #[derive(Resource)]
 pub struct CursorClickedTexture(Handle<Image>);
 
-#[derive(Resource)]
-pub struct CursorClickedAnchor(Handle<Image>);
-
 fn cursors_setup(asset_server: Res<AssetServer>, mut commands: Commands) {
     // TODO sprite outline needs to be black
     let cursor_handle = asset_server.load("cursor/cursor.png");
@@ -125,7 +122,7 @@ fn player_cursor_moved(
     cursor_clicked_texture: Res<CursorClickedTexture>,
     mut commands: Commands,
 ) {
-    for event in cursor_moved_events.iter() {
+    for event in cursor_moved_events.read() {
         let (player_id, cursor_height) = match event.player_id {
             None => (PlayerId::LocalPlayer, LOCAL_CURSOR_HEIGHT),
             Some(uuid) => (PlayerId::RemotePlayer(uuid), REMOTE_CURSOR_HEIGHT),
@@ -161,7 +158,7 @@ fn player_disconnected(
     mut cursor_map: ResMut<CursorMap>,
     mut commands: Commands,
 ) {
-    for event in player_disconnected_events.iter() {
+    for event in player_disconnected_events.read() {
         let player_id = PlayerId::RemotePlayer(event.player_id);
         if let Some(entity) = cursor_map.0.get(&player_id) {
             commands.get_entity(*entity).unwrap().despawn_recursive();
@@ -175,7 +172,7 @@ fn mouse_moved(
     mut cursor_moved_events: EventWriter<PlayerCursorMovedEvent>,
     world_cursor_pos: Res<WorldCursorPosition>,
     cursor_color: Res<CursorColor>,
-    buttons: Res<Input<MouseButton>>,
+    buttons: Res<ButtonInput<MouseButton>>,
 ) {
     if !world_cursor_moved_events.is_empty()
         || buttons.just_pressed(MouseButton::Left)

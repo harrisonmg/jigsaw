@@ -13,6 +13,6 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
-# patch winit until bevy upgrades to a newer release that fixes web mouse handling
-[patch.crates-io]
-winit = { git = "https://github.com/harrisonmg/winit", rev = "b0f5305" }
+## patch winit until bevy upgrades to a newer release that fixes web mouse handling
+#[patch.crates-io]
+#winit = { git = "https://github.com/harrisonmg/winit", rev = "b0f5305" }

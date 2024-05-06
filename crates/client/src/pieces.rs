@@ -93,8 +93,10 @@ impl PieceBundle {
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, new_vertices);
 
         let mesh_handle = meshes.add(mesh);
+        let sprite_image: Image = sprite.image.into();
+
         let material = materials.add(PieceMaterial {
-            texture: image_assets.add(sprite.image.into()),
+            texture: image_assets.add(sprite_image),
         });
 
         let mut translation = piece.translation();
@@ -205,10 +207,11 @@ fn cut_pieces(
 
     let shadow_x_offset = shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
     let shadow_y_offset = shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
+    let shadow_image: Image = shadow_sprite.image.into();
 
     let shadow = SpriteBundle {
         transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
-        texture: image_assets.add(shadow_sprite.image.into()),
+        texture: image_assets.add(shadow_image),
         ..Default::default()
     };
     let shadow_entity = commands.spawn(shadow).id();
@@ -238,7 +241,7 @@ fn move_piece(
     puzzle: Res<Puzzle>,
     mut piece_stack: ResMut<PieceStack>,
 ) {
-    for event in piece_moved_events.iter() {
+    for event in piece_moved_events.read() {
         let piece_entity = *piece_map.0.get(&event.index).unwrap();
         let mut transform = piece_query.get_mut(piece_entity).unwrap();
         transform.translation.x = event.x;

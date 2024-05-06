@@ -39,10 +39,10 @@ features = [
 
 [dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"
-rev = "469a19c"
+rev = "aa80e2d"
 features = ["bevy_render", "serialize"]
 
 [dev-dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"
-rev = "469a19c"
+rev = "aa80e2d"
 features = ["bevy_render", "serialize", "dynamic_linking"]

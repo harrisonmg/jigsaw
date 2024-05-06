@@ -119,17 +119,14 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ..default()
                     })
                     .with_children(|parent| {
-                        parent.spawn(
-                            TextBundle::from_section(
-                                MOBILE_WARNING,
-                                TextStyle {
-                                    font: font_handle,
-                                    font_size: 25.0,
-                                    color: LIGHTER,
-                                },
-                            )
-                            .with_text_alignment(TextAlignment::Center),
-                        );
+                        parent.spawn(TextBundle::from_section(
+                            MOBILE_WARNING,
+                            TextStyle {
+                                font: font_handle,
+                                font_size: 25.0,
+                                color: LIGHTER,
+                            },
+                        ));
                     });
             });
     }
@@ -347,7 +344,7 @@ fn hover_help(
                 style.width = Val::Auto;
                 style.height = Val::Auto;
             }
-            Interaction::Clicked => {
+            Interaction::Pressed => {
                 info!("{:#?}", puzzle);
             }
         }
@@ -376,7 +373,7 @@ fn hover_image_download(
                 style.width = Val::Auto;
                 style.height = Val::Auto;
             }
-            Interaction::Clicked => {
+            Interaction::Pressed => {
                 let bytes = puzzle.raw_image();
                 let blob = Blob::new(bytes.as_ref());
                 let object_url = ObjectUrl::from(blob);

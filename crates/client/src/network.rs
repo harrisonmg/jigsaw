@@ -148,7 +148,7 @@ fn event_io(
 
     macro_rules! forward_events {
         ($reader: ident, $events: ident) => {
-            for event in params.$reader.iter(&params.$events) {
+            for event in params.$reader.read(&params.$events) {
                 if network_io.input.send(event.serialize()).is_err() {
                     next_state.set(AppState::Connecting);
                     return;
@@ -176,13 +176,27 @@ fn event_io(
     for event in new_events {
         use AnyGameEvent::*;
         match event {
-            PieceMoved(event) => params.piece_moved_events.send(event),
-            PiecePickedUp(event) => params.piece_picked_up_events.send(event),
-            PiecePutDown(event) => params.piece_put_down_events.send(event),
-            PieceConnectionCheck(event) => params.piece_connection_check_events.send(event),
-            PieceConnection(event) => params.piece_connection_events.send(event),
-            PlayerCursorMoved(event) => params.player_cursor_moved_events.send(event),
-            PlayerDisconnected(event) => params.player_disconnected_events.send(event),
+            PieceMoved(event) => {
+                params.piece_moved_events.send(event);
+            }
+            PiecePickedUp(event) => {
+                params.piece_picked_up_events.send(event);
+            }
+            PiecePutDown(event) => {
+                params.piece_put_down_events.send(event);
+            }
+            PieceConnectionCheck(event) => {
+                params.piece_connection_check_events.send(event);
+            }
+            PieceConnection(event) => {
+                params.piece_connection_events.send(event);
+            }
+            PlayerCursorMoved(event) => {
+                params.player_cursor_moved_events.send(event);
+            }
+            PlayerDisconnected(event) => {
+                params.player_disconnected_events.send(event);
+            }
         }
     }
 

@@ -64,6 +64,7 @@ impl From<Image> for BevyImageAsset {
             bevy::render::render_resource::TextureDimension::D2,
             value.raw,
             bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+            bevy::render::render_asset::RenderAssetUsages::all(),
         )
     }
 }

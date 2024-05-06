@@ -77,7 +77,7 @@ fn world_cursor(
     camera_query: Query<(&Camera, &GlobalTransform)>,
     mut world_cursor_pos: ResMut<WorldCursorPosition>,
 ) {
-    for event in cursor_moved_events.iter() {
+    for event in cursor_moved_events.read() {
         let (camera, camera_transform) = camera_query.single();
         if let Some(new_world_pos) = camera.viewport_to_world_2d(camera_transform, event.position) {
             let world_cursor_delta = new_world_pos - world_cursor_pos.0;
@@ -98,7 +98,7 @@ fn left_click(
 ) {
     click_state.timer.tick(time.delta());
 
-    for event in mouse_button_events.iter() {
+    for event in mouse_button_events.read() {
         if event.button != MouseButton::Left {
             continue;
         }
@@ -130,12 +130,12 @@ fn left_click(
 fn pan(
     mut world_cursor_moved_events: EventReader<WorldCursorMoved>,
     mut camera_query: Query<&mut Transform, With<Camera>>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut world_cursor_pos: ResMut<WorldCursorPosition>,
 ) {
     if mouse_buttons.any_pressed([MouseButton::Right, MouseButton::Middle]) {
         let mut camera_transform = camera_query.single_mut();
-        for event in world_cursor_moved_events.iter() {
+        for event in world_cursor_moved_events.read() {
             camera_transform.translation -= event.0.extend(0.0);
             world_cursor_pos.0 -= event.0;
         }
@@ -150,7 +150,7 @@ fn zoom(
 ) {
     let mut camera_transform = camera_query.single_mut();
     let mut projection = projection_query.single_mut();
-    for event in scroll_events.iter() {
+    for event in scroll_events.read() {
         let mut total_factor = 1.0 + event.y.abs() * ZOOM_FACTOR;
         if event.y > 0.0 {
             total_factor = 1.0 / total_factor;
@@ -236,7 +236,7 @@ fn click_piece(
 fn drag_piece(
     mut piece_moved_events: EventWriter<PieceMovedEvent>,
     held_piece: Option<ResMut<HeldPiece>>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     world_cursor: Res<WorldCursorPosition>,
     mut puzzle: ResMut<Puzzle>,
 ) {

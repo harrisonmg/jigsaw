@@ -38,7 +38,6 @@ fn main() {
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        fit_canvas_to_parent: true,
                         prevent_default_event_handling: false,
                         ..Default::default()
                     }),
@@ -54,7 +53,7 @@ fn main() {
             BoardPlugin,
             UiPlugin,
         ))
-        .add_state::<AppState>()
+        .insert_state(AppState::Connecting)
         .add_event::<PieceMovedEvent>()
         .add_event::<PiecePickedUpEvent>()
         .add_event::<PiecePutDownEvent>()
@@ -97,7 +96,7 @@ fn init_camera(
 
 fn center_camera(
     mut camera_query: Query<&mut Transform, With<Camera>>,
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
     if input.pressed(KeyCode::Space) {
         let mut transform = camera_query.get_single_mut().unwrap();

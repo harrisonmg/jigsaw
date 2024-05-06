@@ -38,8 +38,10 @@ fn spawn_board(
 ) {
     despawn(board_query, &mut commands);
 
-    let puzzle_size = Vec2::new(puzzle.width() as f32, puzzle.height() as f32);
-    let mesh = meshes.add(Mesh::from(shape::Quad::new(puzzle_size)));
+    let mesh = meshes.add(Mesh::from(Rectangle::new(
+        puzzle.width() as f32,
+        puzzle.height() as f32,
+    )));
 
     commands
         .spawn(MaterialMesh2dBundle {
