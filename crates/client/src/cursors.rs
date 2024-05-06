@@ -58,9 +58,6 @@ pub struct CursorTexture(Handle<Image>);
 #[derive(Resource)]
 pub struct CursorClickedTexture(Handle<Image>);
 
-#[derive(Resource)]
-pub struct CursorClickedAnchor(Handle<Image>);
-
 fn cursors_setup(asset_server: Res<AssetServer>, mut commands: Commands) {
     // TODO sprite outline needs to be black
     let cursor_handle = asset_server.load("cursor/cursor.png");

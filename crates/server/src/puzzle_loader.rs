@@ -133,7 +133,7 @@ impl ImageQueue {
         let mut new_contents = String::new();
         let mut entry_found = false;
 
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             if !entry_found {
                 if let Some(line_entry) = ImageQueueEntry::from_line(line.as_str(), false) {
                     if line_entry == *entry {
