@@ -65,6 +65,8 @@ async fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
+    info!("build: {}", option_env!("GIT_HASH").unwrap_or("unknown"));
+
     let args = Args::parse();
 
     let config_string = read_to_string("server_config.toml").unwrap();
