@@ -19,3 +19,5 @@ queue_file = "queue.txt" # image queue file
 
 tls_cert = "example/cert.pem"
 tls_key = "example/key.rsa"
+
+acme_webroot = "/var/www/acme" # webroot for certbot --webroot renewal

@@ -55,6 +55,8 @@ struct Config {
 
     tls_cert: PathBuf,
     tls_key: PathBuf,
+
+    acme_webroot: PathBuf,
 }
 
 #[tokio::main]
@@ -114,9 +116,11 @@ async fn main() {
             .key_path(config.tls_key)
             .run(([0, 0, 0, 0], config.port));
 
+        let acme_challenge = warp::path!(".well-known" / "acme-challenge" / ..)
+            .and(warp::fs::dir(config.acme_webroot.join(".well-known/acme-challenge")));
         let uri = Uri::try_from(&format!("https://{}", config.domain_name)).unwrap();
         let redirect_route = warp::any().map(move || warp::redirect(uri.clone()));
-        let redirect = warp::serve(redirect_route).run(([0, 0, 0, 0], 80));
+        let redirect = warp::serve(acme_challenge.or(redirect_route)).run(([0, 0, 0, 0], 80));
 
         Box::pin(join(tls, redirect).map(|_| ()))
     };

@@ -318,9 +318,11 @@ impl Puzzle {
         let mut piece_indices = Vec::new();
         let group_index = self.piece(index).unwrap().group_index;
         self.with_group_mut(group_index, |piece| piece_indices.push(piece.index()));
-        piece_indices.iter().fold(false, |acc, index| {
-            self.make_piece_connections(index) || acc
-        })
+        let mut made_connection = false;
+        for index in &piece_indices {
+            made_connection |= self.make_piece_connections(index);
+        }
+        made_connection
     }
 
     fn make_piece_connections(&mut self, index: &PieceIndex) -> bool {
@@ -503,7 +505,7 @@ impl Puzzle {
                     if self
                         .held_pieces
                         .get(&player_id)
-                        .map_or(false, |index| *index == event.index)
+                        .is_some_and(|index| *index == event.index)
                     {
                         self.held_pieces.remove(&player_id);
                     }
