@@ -4,5 +4,5 @@ cd "${0%/*}"
 ./server "$@"
 
 while true; do
-  ./server
+  ./server puzzle_backup.json
 done

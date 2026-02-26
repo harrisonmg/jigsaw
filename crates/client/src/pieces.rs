@@ -5,7 +5,6 @@ use bevy::{
 };
 
 use game::{image::Sprite, Piece, PieceIndex, PieceMovedEvent, Puzzle};
-use image::RgbaImage;
 
 use crate::{
     better_quad::BetterQuad, material::PieceMaterial, states::AppState, ui::LoadingMessage,
@@ -57,13 +56,21 @@ pub struct PieceBundle {
 impl PieceBundle {
     pub fn new(
         piece: &Piece,
-        sprite: Sprite,
+        mask_sprite: Sprite,
+        puzzle_texture: Handle<Image>,
+        crop_x: u32,
+        crop_y: u32,
+        full_width: u32,
+        full_height: u32,
         image_assets: &mut Assets<Image>,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<PieceMaterial>,
     ) -> Self {
-        let sprite_size = Vec2::new(sprite.image.width() as f32, sprite.image.height() as f32);
-        let sprite_origin = Vec2::new(sprite.origin_x as f32, sprite.origin_y as f32);
+        let sprite_size = Vec2::new(
+            mask_sprite.image.width() as f32,
+            mask_sprite.image.height() as f32,
+        );
+        let sprite_origin = Vec2::new(mask_sprite.origin_x as f32, mask_sprite.origin_y as f32);
 
         let piece_component = PieceComponent {
             index: piece.index(),
@@ -93,8 +100,18 @@ impl PieceBundle {
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, new_vertices);
 
         let mesh_handle = meshes.add(mesh);
+
+        let uv_rect = Vec4::new(
+            crop_x as f32 / full_width as f32,
+            crop_y as f32 / full_height as f32,
+            mask_sprite.image.width() as f32 / full_width as f32,
+            mask_sprite.image.height() as f32 / full_height as f32,
+        );
+
         let material = materials.add(PieceMaterial {
-            texture: image_assets.add(sprite.image.into()),
+            puzzle_texture,
+            mask_texture: image_assets.add(mask_sprite.image.into()),
+            uv_rect,
         });
 
         let mut translation = piece.translation();
@@ -120,7 +137,7 @@ pub struct PieceMap(pub HashMap<PieceIndex, Entity>);
 pub struct PieceStack(pub VecDeque<Entity>);
 
 #[derive(Resource)]
-struct CuttingImage(pub RgbaImage);
+struct PuzzleTexture(pub Handle<Image>);
 
 #[derive(Resource)]
 struct CurrentPieceToCut(pub u32);
@@ -152,11 +169,17 @@ fn cutting_setup(
     mut commands: Commands,
     piece_query: Query<Entity, With<PieceComponent>>,
     puzzle: Res<Puzzle>,
+    mut image_assets: ResMut<Assets<Image>>,
 ) {
     commands.insert_resource(PieceMap(HashMap::new()));
     commands.insert_resource(PieceStack(VecDeque::new()));
-    commands.insert_resource(CuttingImage(puzzle.rgba_image()));
     commands.insert_resource(CurrentPieceToCut(0));
+
+    let rgba_image = puzzle.rgba_image();
+    let game_image: game::image::Image = rgba_image.into();
+    let bevy_image: Image = game_image.into();
+    let texture_handle = image_assets.add(bevy_image);
+    commands.insert_resource(PuzzleTexture(texture_handle));
 
     for piece_entity in piece_query.iter() {
         commands
@@ -168,7 +191,7 @@ fn cutting_setup(
 
 #[allow(clippy::too_many_arguments)]
 fn cut_pieces(
-    image: Res<CuttingImage>,
+    puzzle_texture: Res<PuzzleTexture>,
     mut current_piece: ResMut<CurrentPieceToCut>,
     puzzle: Res<Puzzle>,
     mut image_assets: ResMut<Assets<Image>>,
@@ -193,10 +216,16 @@ fn cut_pieces(
 
     let piece = puzzle.piece(&index).unwrap();
 
-    let (piece_sprite, shadow_sprite) = piece.cut_sprites(puzzle.as_ref(), &image.0);
+    let (mask_sprite, shadow_sprite, crop_x, crop_y) =
+        piece.cut_mask_and_shadow(puzzle.as_ref());
     let piece_bundle = PieceBundle::new(
         piece,
-        piece_sprite,
+        mask_sprite,
+        puzzle_texture.0.clone(),
+        crop_x,
+        crop_y,
+        puzzle.width(),
+        puzzle.height(),
         &mut image_assets,
         &mut meshes,
         &mut materials,

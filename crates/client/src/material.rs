@@ -10,7 +10,12 @@ use bevy::{
 pub struct PieceMaterial {
     #[texture(0)]
     #[sampler(1)]
-    pub texture: Handle<Image>,
+    pub puzzle_texture: Handle<Image>,
+    #[texture(2)]
+    #[sampler(3)]
+    pub mask_texture: Handle<Image>,
+    #[uniform(4)]
+    pub uv_rect: Vec4,
 }
 
 impl Material2d for PieceMaterial {

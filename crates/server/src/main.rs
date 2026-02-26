@@ -86,6 +86,13 @@ async fn main() {
     let (event_input_tx, mut event_input_rx) = unbounded_channel::<ServerGameEvent>();
     let (event_output_tx, _) = broadcast::channel::<ServerGameEvent>(config.broadcast_channel_size);
 
+    // ACME challenge handler for certbot --webroot renewal
+    let acme_challenge = warp::path(".well-known")
+        .and(warp::path("acme-challenge"))
+        .and(warp::fs::dir(
+            config.acme_webroot.join(".well-known/acme-challenge"),
+        ));
+
     // route that serves up the client application
     let http_route = warp::fs::dir("dist");
 
@@ -97,12 +104,14 @@ async fn main() {
         .and(warp::ws())
         .and(warp::any().map(move || puzzle_clone.clone()))
         .and(warp::any().map(move || event_input_tx.clone()))
-        .and(warp::any().map(move || event_output_tx_clone.subscribe()))
+        .and(warp::any().map(move || event_output_tx_clone.clone()))
         .and(warp::any().map(move || config.client_timeout))
         .and(warp::any().map(move || config.ip_denylist.clone()))
         .and_then(ws_handler);
 
-    let routes = warp::get().and(http_route).or(client_route);
+    // ACME challenge is on the main routes too so it works even if port 80
+    // traffic is forwarded to this port via iptables
+    let routes = acme_challenge.or(warp::get().and(http_route).or(client_route));
     let serve = warp::serve(routes);
 
     // don't use tls if dev
@@ -116,11 +125,13 @@ async fn main() {
             .key_path(config.tls_key)
             .run(([0, 0, 0, 0], config.port));
 
-        let acme_challenge = warp::path!(".well-known" / "acme-challenge" / ..)
-            .and(warp::fs::dir(config.acme_webroot.join(".well-known/acme-challenge")));
-        let uri = Uri::try_from(&format!("https://{}", config.domain_name)).unwrap();
-        let redirect_route = warp::any().map(move || warp::redirect(uri.clone()));
-        let redirect = warp::serve(acme_challenge.or(redirect_route)).run(([0, 0, 0, 0], 80));
+        // redirect HTTP to HTTPS, preserving the request path
+        let domain = config.domain_name.clone();
+        let redirect_route = warp::path::full().map(move |path: warp::path::FullPath| {
+            let uri = format!("https://{}{}", domain, path.as_str());
+            warp::redirect(Uri::try_from(uri).unwrap())
+        });
+        let redirect = warp::serve(redirect_route).run(([0, 0, 0, 0], 80));
 
         Box::pin(join(tls, redirect).map(|_| ()))
     };

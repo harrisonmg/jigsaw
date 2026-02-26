@@ -1,19 +1,24 @@
 @group(1) @binding(0)
-var texture: texture_2d<f32>;
+var puzzle_texture: texture_2d<f32>;
 
 @group(1) @binding(1)
-var texture_sampler: sampler;
+var puzzle_sampler: sampler;
+
+@group(1) @binding(2)
+var mask_texture: texture_2d<f32>;
+
+@group(1) @binding(3)
+var mask_sampler: sampler;
+
+@group(1) @binding(4)
+var<uniform> uv_rect: vec4<f32>;
 
 @fragment
 fn fragment(
     #import bevy_pbr::mesh_vertex_output
 ) -> @location(0) vec4<f32> {
-    let color = textureSample(texture, texture_sampler, uv);
-
-    // uncomment to view uv origin (0.0, 0.0)
-    //if abs(uv.x - 0.5) < 0.005 || abs(uv.y - 0.5) < 0.005 {
-    //    return vec4(1.0, 0.0, 0.0, 1.0);
-    //}
-
-    return color;
+    let image_uv = uv * uv_rect.zw + uv_rect.xy;
+    let color = textureSample(puzzle_texture, puzzle_sampler, image_uv);
+    let mask = textureSample(mask_texture, mask_sampler, uv);
+    return vec4(color.rgb, color.a * mask.a);
 }

@@ -3,9 +3,13 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use anyhow::Result;
 use futures::future::join;
 use futures_util::{SinkExt, StreamExt};
-use log::{error, info};
+use log::{error, info, warn};
 use tokio::{
-    sync::{broadcast::Receiver, mpsc::UnboundedSender, RwLock},
+    sync::{
+        broadcast::{self, Sender},
+        mpsc::UnboundedSender,
+        RwLock,
+    },
     time::timeout,
 };
 use uuid::Uuid;
@@ -23,7 +27,7 @@ pub async fn ws_handler(
     ws: warp::ws::Ws,
     puzzle: Arc<RwLock<Puzzle>>,
     event_tx: UnboundedSender<ServerGameEvent>,
-    event_rx: Receiver<ServerGameEvent>,
+    event_output_tx: Sender<ServerGameEvent>,
     client_timeout: Duration,
     ip_denylist: Vec<String>,
 ) -> Result<impl Reply, Rejection> {
@@ -33,7 +37,7 @@ pub async fn ws_handler(
             warp_ws,
             puzzle,
             event_tx,
-            event_rx,
+            event_output_tx,
             client_timeout,
             ip_denylist,
         )
@@ -45,7 +49,7 @@ pub async fn client_handler(
     ws: WebSocket,
     puzzle: Arc<RwLock<Puzzle>>,
     event_tx: UnboundedSender<ServerGameEvent>,
-    mut event_rx: Receiver<ServerGameEvent>,
+    event_output_tx: Sender<ServerGameEvent>,
     client_timeout: Duration,
     ip_denylist: Vec<String>,
 ) {
@@ -74,8 +78,14 @@ pub async fn client_handler(
 
     let (mut ws_tx, mut ws_rx) = ws.split();
 
-    // first, send the puzzle
-    let msg = Message::text(&*puzzle.read().await.serialize());
+    // subscribe to broadcast THEN serialize puzzle state while still holding the
+    // read lock, so no events can sneak in between subscription and serialization
+    let (mut event_rx, msg) = {
+        let puzzle = puzzle.read().await;
+        let event_rx = event_output_tx.subscribe();
+        let msg = Message::text(puzzle.serialize());
+        (event_rx, msg)
+    };
 
     if ws_tx.send(msg).await.is_err() {
         info!("client {client_id} disconnected");
@@ -154,7 +164,16 @@ pub async fn client_handler(
 
     // forward broadcasted events to client
     let client_tx_handler = async move {
-        while let Ok(event) = event_rx.recv().await {
+        loop {
+            let event = match event_rx.recv().await {
+                Ok(event) => event,
+                Err(broadcast::error::RecvError::Lagged(n)) => {
+                    warn!("client {client_id} lagged by {n} events, forcing reconnect");
+                    break;
+                }
+                Err(broadcast::error::RecvError::Closed) => break,
+            };
+
             if event.client_id == client_id
                 && matches!(event.game_event, AnyGameEvent::PlayerDisconnected(_))
             {
@@ -162,10 +181,10 @@ pub async fn client_handler(
             }
 
             // don't echo client events unless they're piece connection events
+            #[allow(clippy::collapsible_if)]
             if event.client_id != client_id
                 || matches!(event.game_event, AnyGameEvent::PieceConnection(_))
             {
-                #[allow(clippy::collapsible_if)]
                 if ws_tx
                     .send(Message::text(event.game_event.serialize()))
                     .await
