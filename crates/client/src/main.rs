@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy::sprite::Material2dPlugin;
 use bevy::{log::LogPlugin, time::common_conditions::on_timer};
 
 use game::{
@@ -14,7 +13,7 @@ automod::dir!("src/");
 use board::BoardPlugin;
 use cursors::CursorPlugin;
 use disable_context_menu::DisableContextMenuPlugin;
-use material::PieceMaterial;
+use material::PieceMaterialPlugin;
 use mouse::MousePlugin;
 use network::NetworkPlugin;
 use pieces::PiecePlugin;
@@ -47,7 +46,7 @@ fn main() {
                 .set(log_plugin),
             DisableContextMenuPlugin,
             MousePlugin,
-            Material2dPlugin::<PieceMaterial>::default(),
+            PieceMaterialPlugin,
             NetworkPlugin,
             CursorPlugin,
             PiecePlugin,

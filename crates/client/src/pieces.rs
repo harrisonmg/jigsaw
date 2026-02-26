@@ -99,19 +99,21 @@ impl PieceBundle {
         };
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, new_vertices);
 
-        let mesh_handle = meshes.add(mesh);
-
-        let uv_rect = Vec4::new(
+        // Encode UV rect as vertex colors so the fragment shader can remap UVs
+        // into the full puzzle image. xy = offset, zw = scale.
+        let uv_color: [f32; 4] = [
             crop_x as f32 / full_width as f32,
             crop_y as f32 / full_height as f32,
             mask_sprite.image.width() as f32 / full_width as f32,
             mask_sprite.image.height() as f32 / full_height as f32,
-        );
+        ];
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![uv_color; 4]);
+
+        let mesh_handle = meshes.add(mesh);
 
         let material = materials.add(PieceMaterial {
             puzzle_texture,
             mask_texture: image_assets.add(mask_sprite.image.into()),
-            uv_rect,
         });
 
         let mut translation = piece.translation();
