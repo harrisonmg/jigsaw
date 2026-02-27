@@ -4,7 +4,7 @@ use bevy::{
     prelude::*, render::mesh::VertexAttributeValues, sprite::MaterialMesh2dBundle, utils::HashMap,
 };
 
-use game::{image::Sprite, Piece, PieceIndex, PieceMovedEvent, Puzzle};
+use game::{PieceIndex, PieceKind, PieceMovedEvent, Puzzle};
 
 use crate::{
     better_quad::BetterQuad, material::PieceMaterial, states::AppState, ui::LoadingMessage,
@@ -47,6 +47,18 @@ impl PieceComponent {
     }
 }
 
+struct CachedPieceShape {
+    mask_handle: Handle<Image>,
+    shadow_handle: Handle<Image>,
+    sprite_size: Vec2,
+    sprite_origin: Vec2,
+    shadow_x_offset: f32,
+    shadow_y_offset: f32,
+}
+
+#[derive(Resource)]
+struct PieceShapeCache(HashMap<PieceKind, CachedPieceShape>);
+
 #[derive(Bundle)]
 pub struct PieceBundle {
     piece: PieceComponent,
@@ -54,26 +66,23 @@ pub struct PieceBundle {
 }
 
 impl PieceBundle {
-    pub fn new(
-        piece: &Piece,
-        mask_sprite: Sprite,
+    fn new(
+        index: PieceIndex,
+        translation: Vec3,
+        cached_shape: &CachedPieceShape,
         puzzle_texture: Handle<Image>,
         crop_x: u32,
         crop_y: u32,
         full_width: u32,
         full_height: u32,
-        image_assets: &mut Assets<Image>,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<PieceMaterial>,
     ) -> Self {
-        let sprite_size = Vec2::new(
-            mask_sprite.image.width() as f32,
-            mask_sprite.image.height() as f32,
-        );
-        let sprite_origin = Vec2::new(mask_sprite.origin_x as f32, mask_sprite.origin_y as f32);
+        let sprite_size = cached_shape.sprite_size;
+        let sprite_origin = cached_shape.sprite_origin;
 
         let piece_component = PieceComponent {
-            index: piece.index(),
+            index,
             sprite_size,
             sprite_origin,
         };
@@ -104,8 +113,8 @@ impl PieceBundle {
         let uv_color: [f32; 4] = [
             crop_x as f32 / full_width as f32,
             crop_y as f32 / full_height as f32,
-            mask_sprite.image.width() as f32 / full_width as f32,
-            mask_sprite.image.height() as f32 / full_height as f32,
+            sprite_size.x / full_width as f32,
+            sprite_size.y / full_height as f32,
         ];
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![uv_color; 4]);
 
@@ -113,10 +122,10 @@ impl PieceBundle {
 
         let material = materials.add(PieceMaterial {
             puzzle_texture,
-            mask_texture: image_assets.add(mask_sprite.image.into()),
+            mask_texture: cached_shape.mask_handle.clone(),
         });
 
-        let mut translation = piece.translation();
+        let mut translation = translation;
         translation.z = MIN_PIECE_HEIGHT;
         let mesh_bundle = MaterialMesh2dBundle {
             mesh: mesh_handle.into(),
@@ -183,6 +192,39 @@ fn cutting_setup(
     let texture_handle = image_assets.add(bevy_image);
     commands.insert_resource(PuzzleTexture(texture_handle));
 
+    // Pre-compute mask and shadow textures for all 17 piece kinds
+    let mut shape_cache = HashMap::new();
+    for kind in PieceKind::ALL {
+        let (mask_sprite, shadow_sprite) =
+            kind.render_mask_and_shadow(puzzle.piece_width(), puzzle.piece_height());
+
+        let sprite_size = Vec2::new(
+            mask_sprite.image.width() as f32,
+            mask_sprite.image.height() as f32,
+        );
+        let sprite_origin = Vec2::new(mask_sprite.origin_x as f32, mask_sprite.origin_y as f32);
+        let shadow_x_offset =
+            shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
+        let shadow_y_offset =
+            shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
+
+        let mask_handle = image_assets.add(mask_sprite.image.into());
+        let shadow_handle = image_assets.add(shadow_sprite.image.into());
+
+        shape_cache.insert(
+            kind,
+            CachedPieceShape {
+                mask_handle,
+                shadow_handle,
+                sprite_size,
+                sprite_origin,
+                shadow_x_offset,
+                shadow_y_offset,
+            },
+        );
+    }
+    commands.insert_resource(PieceShapeCache(shape_cache));
+
     for piece_entity in piece_query.iter() {
         commands
             .get_entity(piece_entity)
@@ -191,12 +233,14 @@ fn cutting_setup(
     }
 }
 
+const PIECES_PER_FRAME: u32 = 50;
+
 #[allow(clippy::too_many_arguments)]
 fn cut_pieces(
     puzzle_texture: Res<PuzzleTexture>,
+    shape_cache: Res<PieceShapeCache>,
     mut current_piece: ResMut<CurrentPieceToCut>,
     puzzle: Res<Puzzle>,
-    mut image_assets: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PieceMaterial>>,
     mut loading_msg: ResMut<LoadingMessage>,
@@ -205,58 +249,64 @@ fn cut_pieces(
     mut next_state: ResMut<NextState<AppState>>,
     mut commands: Commands,
 ) {
+    let batch_end = (current_piece.0 + PIECES_PER_FRAME).min(puzzle.piece_count());
+
     loading_msg.0 = format!(
         "Cutting pieces ( {} / {} )",
-        current_piece.0 + 1,
+        batch_end,
         puzzle.piece_count()
     );
 
-    let index = PieceIndex(
-        current_piece.0 / puzzle.num_cols(),
-        current_piece.0 % puzzle.num_cols(),
-    );
+    while current_piece.0 < batch_end {
+        let index = PieceIndex(
+            current_piece.0 / puzzle.num_cols(),
+            current_piece.0 % puzzle.num_cols(),
+        );
 
-    let piece = puzzle.piece(&index).unwrap();
+        let piece = puzzle.piece(&index).unwrap();
+        let cached_shape = shape_cache.0.get(&piece.kind()).unwrap();
+        let (crop_x, crop_y) = piece.crop_offset(puzzle.as_ref());
 
-    let (mask_sprite, shadow_sprite, crop_x, crop_y) =
-        piece.cut_mask_and_shadow(puzzle.as_ref());
-    let piece_bundle = PieceBundle::new(
-        piece,
-        mask_sprite,
-        puzzle_texture.0.clone(),
-        crop_x,
-        crop_y,
-        puzzle.width(),
-        puzzle.height(),
-        &mut image_assets,
-        &mut meshes,
-        &mut materials,
-    );
-    let piece_entity = commands.spawn(piece_bundle).id();
+        let piece_bundle = PieceBundle::new(
+            index,
+            piece.translation(),
+            cached_shape,
+            puzzle_texture.0.clone(),
+            crop_x,
+            crop_y,
+            puzzle.width(),
+            puzzle.height(),
+            &mut meshes,
+            &mut materials,
+        );
+        let piece_entity = commands.spawn(piece_bundle).id();
 
-    let shadow_x_offset = shadow_sprite.image.width() as f32 / 2.0 - shadow_sprite.origin_x as f32;
-    let shadow_y_offset = shadow_sprite.image.height() as f32 / 2.0 - shadow_sprite.origin_y as f32;
+        let shadow = SpriteBundle {
+            transform: Transform::from_xyz(
+                cached_shape.shadow_x_offset,
+                cached_shape.shadow_y_offset,
+                -MIN_PIECE_HEIGHT,
+            ),
+            texture: cached_shape.shadow_handle.clone(),
+            ..Default::default()
+        };
+        let shadow_entity = commands.spawn(shadow).id();
 
-    let shadow = SpriteBundle {
-        transform: Transform::from_xyz(shadow_x_offset, shadow_y_offset, -MIN_PIECE_HEIGHT),
-        texture: image_assets.add(shadow_sprite.image.into()),
-        ..Default::default()
-    };
-    let shadow_entity = commands.spawn(shadow).id();
+        commands
+            .entity(piece_entity)
+            .push_children(&[shadow_entity]);
 
-    commands
-        .entity(piece_entity)
-        .push_children(&[shadow_entity]);
+        piece_map.0.insert(index, piece_entity);
 
-    piece_map.0.insert(index, piece_entity);
+        if puzzle.piece_group_locked(&index) {
+            piece_stack.0.push_back(piece_entity);
+        } else {
+            piece_stack.0.push_front(piece_entity);
+        }
 
-    if puzzle.piece_group_locked(&index) {
-        piece_stack.0.push_back(piece_entity);
-    } else {
-        piece_stack.0.push_front(piece_entity);
+        current_piece.0 += 1;
     }
 
-    current_piece.0 += 1;
     if current_piece.0 >= puzzle.piece_count() {
         next_state.set(AppState::Playing);
     }
