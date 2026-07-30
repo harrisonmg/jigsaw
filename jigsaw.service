@@ -1,0 +1,11 @@
+[Unit]
+Description=Friendly Jigsaw Server
+
+[Service]
+Type=simple
+WorkingDirectory=/root
+ExecStart=/root/run.sh
+Restart=always
+
+[Install]
+WantedBy=default.target
